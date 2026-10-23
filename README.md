@@ -17,10 +17,34 @@ If no Supabase keys are set, the app runs in **demo mode** with sample data. Use
 
 To use a real Supabase project:
 
-1. Run `supabase/migrations/001_marketplace.sql` in the Supabase SQL editor.
+1. Run `supabase/migrations/001_marketplace.sql`, then `002_storage_links_expiry.sql`, in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
 2. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 3. Make yourself an admin:
    `insert into user_roles (user_id, role) values ('<your auth user id>', 'admin');`
+
+### Email alerts for inquiries (optional)
+
+`supabase/functions/notify-inquiry` emails the business whenever a user sends a question. It uses [Resend](https://resend.com).
+
+```bash
+supabase functions deploy notify-inquiry --no-verify-jwt
+supabase secrets set RESEND_API_KEY=... INQUIRY_FROM_EMAIL="Marketplace <market@yourdomain.com>" \
+  MARKETPLACE_ADMIN_EMAIL=you@yourdomain.com INQUIRY_WEBHOOK_SECRET=<random string>
+```
+
+Then go to Dashboard → Database → Webhooks and add a webhook on **INSERT** into `marketplace_inquiries` that calls the function, with the header `x-webhook-secret: <same random string>`. Questions about owned-brand listings go to `MARKETPLACE_ADMIN_EMAIL`.
+
+## Shareable demo
+
+`npm run build:demo` writes `demo/wellness-marketplace-demo.html`, a single self-contained page with sample data that opens on the Market tab. It includes a short "try the whole flow" guide.
+
+## Tests
+
+```bash
+npm test                     # unit tests: link tagging + marketplace rules
+npm run build && npx vite preview --port 4173 &
+npm run e2e                  # browser test of the full vendor → admin → user flow
+```
 
 ## Adding it to the Lovable nutrition app
 
@@ -45,6 +69,9 @@ The database enforces the rules itself, not just the screens (see the migration)
 | Every status change is recorded | `log_listing_status_change` → `marketplace_reviews` |
 | Clicks are stored as anonymous daily totals only | `record_marketplace_click()`; no direct writes to the table |
 | Inquiries need consent and a published listing | Table check and RLS policy |
+| Only `https://` or `http://` links can be saved, so no `javascript:` links | Check constraints in migration 002 |
+| Vendors can upload images only to their own folder | Storage policies in migration 002 |
+| Outbound links carry `utm_*` tags and nothing about the user | `src/lib/outbound.ts` |
 
 Health, meal and weight data are never read by this module.
 
@@ -52,6 +79,10 @@ Health, meal and weight data are never read by this module.
 
 ```
 supabase/migrations/001_marketplace.sql   tables, enums, RLS, triggers, seed data
+supabase/migrations/002_storage_links_expiry.sql  image bucket, link checks, nightly expiry
+supabase/functions/notify-inquiry/        email to the business when a user asks a question
+tests/                                    unit tests and end-to-end browser test
+scripts/build-demo.mjs                    builds the one-file shareable demo
 src/lib/types.ts                          types that mirror the schema
 src/lib/api.ts                            data-layer interface (Supabase or demo)
 src/lib/supabaseApi.ts                    Supabase implementation
@@ -66,5 +97,4 @@ screenshots/                              screenshots from the end-to-end test
 
 - Replace the sample TriggerMD and XIMMD copy with verified descriptions, prices, ingredients and evidence. Brand details can be edited from Admin → Brands.
 - Get legal and advertising sign-off on telehealth listings and disclaimers.
-- Schedule `select expire_marketplace_listings();` to run daily with pg_cron.
-- Add a Supabase Storage bucket for image uploads. Image URLs work today.
+- Turn on pg_cron so migration 002 can schedule the nightly expiry. If you turned it on after running the migration, run the `cron.schedule` line it printed.

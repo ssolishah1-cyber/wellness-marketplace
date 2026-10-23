@@ -56,6 +56,14 @@ export function supabaseApi(sb: SupabaseClient): MarketApi {
       unwrap(await sb.from("marketplace_inquiries").insert(input));
     },
 
+    async uploadImage(file, folder) {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await sb.storage.from("marketplace-images").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw new Error(error.message);
+      return sb.storage.from("marketplace-images").getPublicUrl(path).data.publicUrl;
+    },
+
     async getMyVendor() {
       const { data } = await sb.auth.getUser();
       if (!data.user) return null;

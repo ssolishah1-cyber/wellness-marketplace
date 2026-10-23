@@ -39,6 +39,9 @@ export interface MarketApi {
   recordClick(listingId: string, source: string): Promise<void>;
   sendInquiry(input: InquiryInput): Promise<void>;
 
+  // Images: folder is the vendor id for vendors, "brands" or "staff" for staff
+  uploadImage(file: File, folder: string): Promise<string>;
+
   // Vendor
   getMyVendor(): Promise<Vendor | null>;
   applyAsVendor(input: VendorApplication): Promise<Vendor>;

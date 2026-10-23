@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import {
   CategoryIcon, EmptyState, ListingCard, NUTRITION_INDEPENDENCE_NOTE, SkeletonGrid, SponsoredBadge, useCategories, useViewer,
 } from "@/components/ui";
+import DemoGuide from "@/components/DemoGuide";
 
 export default function MarketHome() {
   const [q, setQ] = useState("");
@@ -16,6 +17,7 @@ export default function MarketHome() {
 
   return (
     <div className="space-y-7">
+      <DemoGuide />
       <section>
         <h1 className="text-2xl font-bold">Wellness Marketplace</h1>
         <p className="text-sm text-slate-600">Telehealth, wellness products, coaching, fitness and education from reviewed partners.</p>

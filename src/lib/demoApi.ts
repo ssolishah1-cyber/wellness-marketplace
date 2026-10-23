@@ -121,6 +121,18 @@ export const demoApi: MarketApi = {
     db.inquiries.push({ ...input, id: uid(), user_id: v.userId, status: "new", created_at: nowIso() });
   },
 
+  uploadImage: async (file) => {
+    if (!viewer().userId) throw new Error("Please sign in first.");
+    if (file.size > 5 * 1024 * 1024) throw new Error("Images must be 5 MB or smaller.");
+    // Demo only: keep the image in memory as a data URL.
+    return new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("Could not read the image."));
+      r.readAsDataURL(file);
+    });
+  },
+
   getMyVendor: () => {
     const v = viewer();
     return delay(v.userId ? db.vendors.find((x) => x.owner_user_id === v.userId) ?? null : null);

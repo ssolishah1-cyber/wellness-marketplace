@@ -2,9 +2,11 @@ import { useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Home, Salad, LineChart, ShoppingBag, User, Shield, Store } from "lucide-react";
-import { isDemoMode } from "@/integrations/supabase/client";
+import { isDemoMode, supabase } from "@/integrations/supabase/client";
 import { getDemoPersona, onDemoPersonaChange, setDemoPersona, type DemoPersona } from "@/lib/demoApi";
 import { useViewer } from "./ui";
+
+const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || "Nutrition App";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home, end: true },
@@ -18,7 +20,11 @@ export default function Layout() {
   const qc = useQueryClient();
   const { data: viewer } = useViewer();
 
-  useEffect(() => (isDemoMode ? onDemoPersonaChange(() => qc.invalidateQueries()) : undefined), [qc]);
+  useEffect(() => {
+    if (isDemoMode) return onDemoPersonaChange(() => qc.invalidateQueries());
+    const { data } = supabase!.auth.onAuthStateChange(() => qc.invalidateQueries());
+    return () => data.subscription.unsubscribe();
+  }, [qc]);
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
@@ -26,7 +32,7 @@ export default function Layout() {
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
           <NavLink to="/" className="flex items-center gap-2 font-bold text-brand-700">
-            <Salad className="h-5 w-5" /> NutriAI
+            <Salad className="h-5 w-5" /> {APP_NAME}
           </NavLink>
           <nav className="ml-4 hidden gap-1 md:flex">
             {NAV.map(({ to, label, end }) => (
@@ -51,7 +57,7 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom,0px)] md:hidden">
         <div className="grid grid-cols-5">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end}

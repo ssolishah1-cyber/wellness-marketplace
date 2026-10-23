@@ -1,6 +1,6 @@
 # Lovable prompt — Wellness Marketplace
 
-**Before pasting:** run `supabase/migrations/001_marketplace.sql` in your Supabase SQL editor
+**Before pasting:** run `supabase/migrations/001_marketplace.sql` and then `002_storage_links_expiry.sql` in your Supabase SQL editor
 (or paste it into Lovable and ask it to apply it as a migration). Then paste everything
 below the line into Lovable.
 

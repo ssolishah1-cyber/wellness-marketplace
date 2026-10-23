@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { LISTING_TYPES, type Brand, type Category, type Listing, type ListingInput, type ListingStatus, type ListingType } from "@/lib/types";
 import { ErrorNote, Field } from "./ui";
+import ImageUpload from "./ImageUpload";
 
 interface Props {
   initial: Listing | null;
@@ -144,7 +145,26 @@ export default function ListingForm({ initial, vendorId, staff, brands, categori
         <div className="sm:col-span-2"><Field label="Price note" hint='e.g. "per consultation", "from"'><input className="input" {...text("price_note")} /></Field></div>
         <div className="sm:col-span-3"><Field label="Destination URL"><input className="input" type="url" placeholder="https://" {...text("destination_url")} /></Field></div>
         <Field label="Button label"><input className="input" maxLength={30} {...text("cta_label")} /></Field>
-        <div className="sm:col-span-4"><Field label="Image URLs" hint="One per line. First image is the cover."><textarea className="input" rows={2} {...text("image_urls")} /></Field></div>
+        <div className="space-y-2 sm:col-span-4">
+          <span className="label">Images</span>
+          {lines(f.image_urls).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {lines(f.image_urls).map((u, idx) => (
+                <div key={u} className="relative">
+                  <img src={u} alt="" className="h-16 w-16 rounded-lg border border-slate-200 object-cover" />
+                  {idx === 0 && <span className="absolute bottom-0.5 left-0.5 rounded bg-slate-900/70 px-1 text-[9px] text-white">Cover</span>}
+                  <button type="button" aria-label="Remove image" className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-white text-xs shadow ring-1 ring-slate-200"
+                    onClick={() => set("image_urls", lines(f.image_urls).filter((x) => x !== u).join("\n"))}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <ImageUpload folder={staff ? "staff" : vendorId ?? "staff"} onUploaded={(url) => set("image_urls", [...lines(f.image_urls), url].join("\n"))} />
+          <details className="text-xs text-slate-500">
+            <summary className="cursor-pointer">Or paste image links</summary>
+            <textarea className="input mt-1" rows={2} placeholder="One https:// link per line. First image is the cover." {...text("image_urls")} />
+          </details>
+        </div>
       </fieldset>
 
       {showService && (

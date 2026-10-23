@@ -59,6 +59,7 @@ function Dashboard({ vendor }: { vendor: Vendor }) {
   const clicks = useQuery({ queryKey: ["vendor-clicks", ids], queryFn: () => api.listClicks(ids), enabled: !!ids });
   const inquiries = useQuery({ queryKey: ["vendor-inquiries", ids], queryFn: () => api.listInquiries(ids), enabled: !!ids });
   const [editing, setEditing] = useState<Listing | "new" | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const refresh = () => qc.invalidateQueries();
   const submit = useMutation({ mutationFn: (l: Listing) => api.saveListing({ id: l.id, title: l.title, category_id: l.category_id, status: "pending_review" }), onSuccess: refresh });
@@ -125,9 +126,15 @@ function Dashboard({ vendor }: { vendor: Vendor }) {
                 )}
                 <button className="btn-outline px-3 py-1.5 text-xs" onClick={() => setEditing(l)}><Pencil className="h-3.5 w-3.5" /> Edit</button>
                 {(l.status === "draft" || l.status === "rejected") && (
-                  <button className="btn-outline px-3 py-1.5 text-xs text-rose-700" onClick={() => confirm("Delete this listing?") && remove.mutate(l.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  confirmDelete === l.id ? (
+                    <button className="btn-danger px-3 py-1.5 text-xs" onClick={() => { setConfirmDelete(null); remove.mutate(l.id); }}>
+                      <Trash2 className="h-3.5 w-3.5" /> Confirm delete
+                    </button>
+                  ) : (
+                    <button className="btn-outline px-3 py-1.5 text-xs text-rose-700" aria-label="Delete listing" onClick={() => setConfirmDelete(l.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )
                 )}
               </div>
             </div>

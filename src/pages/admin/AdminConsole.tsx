@@ -8,6 +8,7 @@ import {
 } from "@/lib/types";
 import ListingForm from "@/components/ListingForm";
 import ClicksChart from "./ClicksChart";
+import ImageUpload from "@/components/ImageUpload";
 import { EmptyState, ErrorNote, Field, Spinner, SponsoredBadge, StatusBadge, formatPrice, useCategories, useViewer } from "@/components/ui";
 
 type Tab = "queue" | "listings" | "vendors" | "brands" | "analytics";
@@ -323,7 +324,13 @@ function BrandForm({ brand, onDone }: { brand: Brand; onDone: () => void }) {
       <Field label="Tagline"><input className="input" {...bind("tagline")} /></Field>
       <Field label="Description"><textarea className="input" rows={4} {...bind("description")} /></Field>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Logo URL"><input className="input" type="url" {...bind("logo_url")} /></Field>
+        <div>
+          <Field label="Logo URL"><input className="input" type="url" {...bind("logo_url")} /></Field>
+          <div className="mt-2 flex items-center gap-2">
+            {f.logo_url && <img src={f.logo_url} alt="" className="h-10 w-10 rounded-lg border border-slate-200 object-contain" />}
+            <ImageUpload folder="brands" label="Upload logo" onUploaded={(url) => setF((p) => ({ ...p, logo_url: url }))} />
+          </div>
+        </div>
         <Field label="Website URL"><input className="input" type="url" {...bind("website_url")} /></Field>
       </div>
       <Field label="Affiliation disclosure" hint="Required for owned or sponsored brands."><textarea className="input" rows={2} {...bind("affiliation_disclosure")} /></Field>

@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, Calendar, CheckCircle2, ExternalLink, MapPin, MessageSquare, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Listing } from "@/lib/types";
+import { isSafeHttpUrl, withUtm } from "@/lib/outbound";
 import {
   EmptyState, ErrorNote, Field, Spinner, SponsoredBadge, StatusBadge, Thumb, formatPrice, useCategories, useViewer,
 } from "@/components/ui";
@@ -28,11 +29,12 @@ export default function ListingPage() {
   const price = formatPrice(l);
   const live = l.status === "published";
 
-  const openDestination = () => {
-    if (!l.destination_url) return;
-    // Aggregate, anonymous count only: no user id or health data is sent.
+  const destination = isSafeHttpUrl(l.destination_url) ? withUtm(l.destination_url, l.slug, "listing") : null;
+  const evidenceLinks = l.evidence_urls.filter(isSafeHttpUrl);
+
+  // Aggregate, anonymous count only: no user id or health data is sent.
+  const countClick = () => {
     if (live) void api.recordClick(l.id, "listing");
-    window.open(l.destination_url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -76,10 +78,10 @@ export default function ListingPage() {
           {l.event_location && <p className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4 text-slate-400" />{l.event_location}</p>}
           {l.min_age && <p className="text-sm font-medium text-slate-700">Must be {l.min_age}+</p>}
           <div className="flex flex-col gap-2 pt-1">
-            {l.destination_url && (
-              <button onClick={openDestination} className="btn-primary py-3">
+            {destination && (
+              <a href={destination} target="_blank" rel="noopener noreferrer sponsored" onClick={countClick} className="btn-primary py-3">
                 {l.cta_label || "Learn more"} <ExternalLink className="h-4 w-4" />
-              </button>
+              </a>
             )}
             {live && viewer?.userId && (
               <button onClick={() => setAsking(true)} className="btn-outline"><MessageSquare className="h-4 w-4" /> Ask a question</button>
@@ -104,12 +106,12 @@ export default function ListingPage() {
         <Section title="Ingredients / specifications">{l.ingredients_specs}</Section>
         <Section title="Shipping">{l.shipping_info}</Section>
         <Section title="Refund policy">{l.refund_policy}</Section>
-        {(l.evidence_summary || l.evidence_urls.length > 0) && (
+        {(l.evidence_summary || evidenceLinks.length > 0) && (
           <div className="card p-4">
             <h2 className="mb-1 font-semibold">Supporting evidence</h2>
             {l.evidence_summary && <p className="whitespace-pre-line text-sm text-slate-700">{l.evidence_summary}</p>}
             <ul className="mt-2 space-y-1 text-sm">
-              {l.evidence_urls.map((u) => (
+              {evidenceLinks.map((u) => (
                 <li key={u}><a href={u} target="_blank" rel="noopener noreferrer" className="text-brand-700 underline break-all">{u}</a></li>
               ))}
             </ul>

@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import MarketHome from "@/pages/MarketHome";
@@ -8,6 +8,15 @@ import ListingPage from "@/pages/ListingPage";
 import VendorPortal from "@/pages/VendorPortal";
 import AdminConsole from "@/pages/admin/AdminConsole";
 import Placeholder from "@/pages/Placeholder";
+import ProfilePage from "@/pages/ProfilePage";
+
+// The shareable demo build keeps routes in memory (no server rewrites needed)
+// and opens straight on the Market.
+function Router({ children }: { children: React.ReactNode }) {
+  return import.meta.env.VITE_ROUTER === "memory"
+    ? <MemoryRouter initialEntries={["/market"]}>{children}</MemoryRouter>
+    : <BrowserRouter>{children}</BrowserRouter>;
+}
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
@@ -16,13 +25,13 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, ref
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <Router>
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Placeholder title="Home" />} />
             <Route path="/meals" element={<Placeholder title="Meals" />} />
             <Route path="/progress" element={<Placeholder title="Progress" />} />
-            <Route path="/profile" element={<Placeholder title="Profile" />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/market" element={<MarketHome />} />
             <Route path="/market/category/:slug" element={<CategoryPage />} />
             <Route path="/market/brand/:slug" element={<BrandPage />} />
@@ -32,7 +41,7 @@ export default function App() {
             <Route path="*" element={<Placeholder title="Page not found" />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </Router>
     </QueryClientProvider>
   );
 }

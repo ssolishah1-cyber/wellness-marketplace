@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Info } from "lucide-react";
 import { api } from "@/lib/api";
+import { isSafeHttpUrl, withUtm } from "@/lib/outbound";
 import { EmptyState, ListingCard, SkeletonGrid, Spinner, SponsoredBadge, useCategories } from "@/components/ui";
 
 export default function BrandPage() {
@@ -33,8 +34,8 @@ export default function BrandPage() {
           </div>
           {b.tagline && <p className="text-slate-600">{b.tagline}</p>}
         </div>
-        {b.website_url && (
-          <a href={b.website_url} target="_blank" rel="noopener noreferrer sponsored" className="btn-primary">
+        {isSafeHttpUrl(b.website_url) && (
+          <a href={withUtm(b.website_url, b.slug, "brand_page")} target="_blank" data-testid="brand-visit" rel="noopener noreferrer sponsored" className="btn-primary">
             Visit {b.name} <ExternalLink className="h-4 w-4" />
           </a>
         )}
