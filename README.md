@@ -1,6 +1,14 @@
-# Wellness Marketplace module
+# Nutrition App with Wellness Market
 
-The Market tab for the AI nutrition app. It promotes TriggerMD and XIMMD as clearly labelled sponsored partners and lets approved wellness businesses advertise. Every listing is reviewed before it goes live.
+A nutrition tracker with a reviewed wellness marketplace:
+
+- **Home**: calorie ring, macros, water, streak and a coach tip based only on the user's own log
+- **Meals**: log food by day and meal, from quick picks or custom entries
+- **Progress**: weight trend, weigh-ins, goal progress and the last 7 days of calories
+- **Profile**: goals, privacy settings, sign-in, questions sent to providers
+- **Market**: TriggerMD and XIMMD as labelled sponsored partners, plus approved businesses; vendor portal and admin review console
+
+Nutrition data is private to each user and is never read by the Market.
 
 **Stack:** React 18 · Vite · TypeScript · Tailwind · React Query · Supabase. This is the same stack Lovable uses.
 
@@ -17,7 +25,7 @@ If no Supabase keys are set, the app runs in **demo mode** with sample data. Use
 
 To use a real Supabase project:
 
-1. Run `supabase/migrations/001_marketplace.sql`, then `002_storage_links_expiry.sql`, in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
+1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, in that order, in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
 2. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 3. Make yourself an admin:
    `insert into user_roles (user_id, role) values ('<your auth user id>', 'admin');`
@@ -34,6 +42,18 @@ supabase secrets set RESEND_API_KEY=... INQUIRY_FROM_EMAIL="Marketplace <market@
 
 Then go to Dashboard → Database → Webhooks and add a webhook on **INSERT** into `marketplace_inquiries` that calls the function, with the header `x-webhook-secret: <same random string>`. Questions about owned-brand listings go to `MARKETPLACE_ADMIN_EMAIL`.
 
+## Vercel site
+
+`vercel.json` runs `npm run build:site`, which publishes:
+
+| Path | What |
+|---|---|
+| `/` | Approval mockup (`deploy/index.html`) |
+| `/demo` | One-file Market demo (`deploy/demo/`) |
+| `/app` | The full app. Demo mode until `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are added in Vercel → Settings → Environment Variables, then redeploy. |
+
+In Supabase → Authentication → URL Configuration, set the Site URL to `https://<your-site>/app` so sign-up confirmation links return to the app.
+
 ## Shareable demo
 
 `npm run build:demo` writes `demo/wellness-marketplace-demo.html`, a single self-contained page with sample data that opens on the Market tab. It includes a short "try the whole flow" guide.
@@ -44,6 +64,7 @@ Then go to Dashboard → Database → Webhooks and add a webhook on **INSERT** i
 npm test                     # unit tests: link tagging + marketplace rules
 npm run build && npx vite preview --port 4173 &
 npm run e2e                  # browser test of the full vendor → admin → user flow
+npm run e2e:nutrition        # browser test of Home, Meals, Progress, Profile
 ```
 
 ## Adding it to the Lovable nutrition app
@@ -80,6 +101,9 @@ Health, meal and weight data are never read by this module.
 ```
 supabase/migrations/001_marketplace.sql   tables, enums, RLS, triggers, seed data
 supabase/migrations/002_storage_links_expiry.sql  image bucket, link checks, nightly expiry
+supabase/migrations/003_nutrition.sql     profiles & goals, food log, water, weight (owner-only)
+src/lib/nutrition/                        nutrition data layer (Supabase + demo), coach and date logic
+src/pages/HomePage.tsx, MealsPage.tsx, ProgressPage.tsx, ProfilePage.tsx
 supabase/functions/notify-inquiry/        email to the business when a user asks a question
 tests/                                    unit tests and end-to-end browser test
 scripts/build-demo.mjs                    builds the one-file shareable demo

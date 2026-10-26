@@ -8,29 +8,34 @@ import ListingPage from "@/pages/ListingPage";
 import VendorPortal from "@/pages/VendorPortal";
 import AdminConsole from "@/pages/admin/AdminConsole";
 import Placeholder from "@/pages/Placeholder";
+import HomePage from "@/pages/HomePage";
+import MealsPage from "@/pages/MealsPage";
+import ProgressPage from "@/pages/ProgressPage";
+import { ToastProvider } from "@/components/Toast";
 import ProfilePage from "@/pages/ProfilePage";
 
 // The shareable demo build keeps routes in memory (no server rewrites needed)
-// and opens straight on the Market.
+// and opens straight on the Market. VITE_BASE lets the app live under a
+// sub-path such as /app on the Vercel site.
+const basename = (import.meta.env.BASE_URL || "/").replace(/\/$/, "") || undefined;
 function Router({ children }: { children: React.ReactNode }) {
   return import.meta.env.VITE_ROUTER === "memory"
     ? <MemoryRouter initialEntries={["/market"]}>{children}</MemoryRouter>
-    : <BrowserRouter>{children}</BrowserRouter>;
+    : <BrowserRouter basename={basename}>{children}</BrowserRouter>;
 }
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
-// In the Lovable project, add only the /market* and /admin/marketplace routes
-// to the existing router; Home, Meals, Progress and Profile already exist there.
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ToastProvider>
       <Router>
         <Routes>
           <Route element={<Layout />}>
-            <Route path="/" element={<Placeholder title="Home" />} />
-            <Route path="/meals" element={<Placeholder title="Meals" />} />
-            <Route path="/progress" element={<Placeholder title="Progress" />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/meals" element={<MealsPage />} />
+            <Route path="/progress" element={<ProgressPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/market" element={<MarketHome />} />
             <Route path="/market/category/:slug" element={<CategoryPage />} />
@@ -42,6 +47,7 @@ export default function App() {
           </Route>
         </Routes>
       </Router>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

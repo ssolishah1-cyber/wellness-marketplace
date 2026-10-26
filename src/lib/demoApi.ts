@@ -47,6 +47,11 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const nowIso = () => new Date().toISOString();
 const delay = <T>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), 120));
 
+/** The signed-in demo user's id, or null for the Visitor persona. */
+export function getDemoUserId(): string | null {
+  return viewer().userId;
+}
+
 function viewer(): Viewer {
   if (persona === "visitor") return { userId: null, email: null, isStaff: false };
   const u = DEMO_USERS[persona];
