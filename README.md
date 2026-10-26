@@ -25,7 +25,7 @@ If no Supabase keys are set, the app runs in **demo mode** with sample data. Use
 
 To use a real Supabase project:
 
-1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, in that order, in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
+1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql` and `004_lock_down_functions.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
 2. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 3. Make yourself an admin:
    `insert into user_roles (user_id, role) values ('<your auth user id>', 'admin');`
