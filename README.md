@@ -50,7 +50,7 @@ Then go to Dashboard → Database → Webhooks and add a webhook on **INSERT** i
 |---|---|
 | `/` | Approval mockup (`deploy/index.html`) |
 | `/demo` | One-file Market demo (`deploy/demo/`) |
-| `/app` | The full app. Demo mode until `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are added in Vercel → Settings → Environment Variables, then redeploy. |
+| `/app` | The full app. Demo mode until the Supabase URL and public key are added in Vercel → Settings → Environment Variables as `SUPABASE_URL` + `SUPABASE_ANON_KEY` (or the `VITE_`/`NEXT_PUBLIC_` versions), then redeploy. A secret or service_role key in that slot stops the build. |
 
 In Supabase → Authentication → URL Configuration, set the Site URL to `https://<your-site>/app` so sign-up confirmation links return to the app.
 

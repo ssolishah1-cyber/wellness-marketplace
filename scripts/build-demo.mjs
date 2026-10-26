@@ -8,7 +8,10 @@ const root = path.resolve(import.meta.dirname, "..");
 const out = path.join(root, "dist-demo");
 execSync(`npx vite build --outDir ${out} --emptyOutDir`, {
   cwd: root, stdio: "inherit",
-  env: { ...process.env, VITE_ROUTER: "memory", VITE_SUPABASE_URL: "", VITE_SUPABASE_ANON_KEY: "" },
+  env: {
+    ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !/SUPABASE/.test(k))),
+    VITE_ROUTER: "memory",
+  },
 });
 
 const assets = path.join(out, "assets");
