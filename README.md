@@ -5,7 +5,9 @@ A nutrition tracker with a reviewed wellness marketplace:
 - **Home**: calorie ring, macros, water, streak and a coach tip based only on the user's own log
 - **Meals**: log food by day and meal, from quick picks or custom entries
 - **Progress**: weight trend, weigh-ins, goal progress and the last 7 days of calories
-- **Profile**: goals, privacy settings, sign-in, questions sent to providers
+- **Profile**: goals, health focus & food preferences, workout settings, privacy settings, sign-in, questions sent to providers
+- **For you** (on Home): guidance for blood sugar, blood pressure, IBS, focus, and stress & sleep, with meal ideas matched to food preferences (`/health/:id`)
+- **Workouts**: a weekly home or gym plan built on the device from level, days per week, weight goal and health focus (`/workouts`)
 - **Market**: TriggerMD and XIMMD as labelled sponsored partners, plus approved businesses; vendor portal and admin review console
 
 Nutrition data is private to each user and is never read by the Market.
@@ -25,7 +27,7 @@ If no Supabase keys are set, the app runs in **demo mode** with sample data. Use
 
 To use a real Supabase project:
 
-1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, `004_lock_down_functions.sql` and `005_onboarding_and_account_deletion.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
+1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, `004_lock_down_functions.sql`, `005_onboarding_and_account_deletion.sql` and `006_health_profile_and_workouts.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
 2. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 3. Make yourself an admin:
    `insert into user_roles (user_id, role) values ('<your auth user id>', 'admin');`
@@ -118,6 +120,9 @@ Health, meal and weight data are never read by this module.
 supabase/migrations/001_marketplace.sql   tables, enums, RLS, triggers, seed data
 supabase/migrations/002_storage_links_expiry.sql  image bucket, link checks, nightly expiry
 supabase/migrations/003_nutrition.sql     profiles & goals, food log, water, weight (owner-only)
+supabase/migrations/006_health_profile_and_workouts.sql  health focus (consent required), food prefs, fitness, workout log
+src/lib/nutrition/health.ts               condition guides, today's insight, meal ideas
+src/lib/fitness.ts                        exercise library and weekly plan builder
 src/lib/nutrition/                        nutrition data layer (Supabase + demo), coach and date logic
 src/pages/HomePage.tsx, MealsPage.tsx, ProgressPage.tsx, ProfilePage.tsx
 supabase/functions/notify-inquiry/        email to the business when a user asks a question

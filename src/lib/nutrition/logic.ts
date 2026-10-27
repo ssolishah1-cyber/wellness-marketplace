@@ -101,15 +101,21 @@ export interface Targets { kcal_goal: number; protein_goal_g: number; carbs_goal
  * Mifflin-St Jeor estimate. A starting point the user can edit, not medical advice.
  * Losing: about 500 kcal/day below maintenance, never below a safe floor.
  */
-export function suggestTargets(i: { sex: Sex; age: number; heightCm: number; weightKg: number; activity: Activity; goal: GoalKind }): Targets {
+export function suggestTargets(i: { sex: Sex; age: number; heightCm: number; weightKg: number; activity: Activity; goal: GoalKind; lowerCarb?: boolean }): Targets {
   const bmr = 10 * i.weightKg + 6.25 * i.heightCm - 5 * i.age + (i.sex === "male" ? 5 : -161);
   const tdee = bmr * ACTIVITY_FACTOR[i.activity];
   const floor = i.sex === "male" ? 1500 : 1200;
   const raw = i.goal === "lose" ? Math.max(floor, tdee - 500) : i.goal === "gain" ? tdee + 300 : tdee;
   const kcal = Math.round(raw / 10) * 10;
   const protein = Math.round(i.weightKg * (i.goal === "maintain" ? 1.4 : 1.8));
-  const fat = Math.round((kcal * 0.3) / 9);
-  const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+  let fat = Math.round((kcal * 0.3) / 9);
+  let carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+  // Blood-sugar focus or a lower-carb preference: cap carbs at 40% of calories, rest from fat.
+  const carbCap = Math.round((kcal * 0.4) / 4);
+  if (i.lowerCarb && carbs > carbCap) {
+    carbs = carbCap;
+    fat = Math.round((kcal - protein * 4 - carbs * 4) / 9);
+  }
   const water = Math.min(14, Math.max(6, Math.round((i.weightKg * 35) / 250)));
   return { kcal_goal: kcal, protein_goal_g: protein, carbs_goal_g: carbs, fat_goal_g: fat, water_goal_glasses: water };
 }

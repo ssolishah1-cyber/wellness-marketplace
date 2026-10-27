@@ -27,6 +27,9 @@ export default function Layout() {
   const { pathname } = useLocation();
   const needsSetup = !!viewer?.userId && !!profile.data && !profile.data.onboarded_at && !SETUP_EXEMPT.includes(pathname);
 
+  // New page starts at the top.
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+
   useEffect(() => {
     if (isDemoMode) return onDemoPersonaChange(() => qc.invalidateQueries());
     const { data } = supabase!.auth.onAuthStateChange(() => qc.invalidateQueries());

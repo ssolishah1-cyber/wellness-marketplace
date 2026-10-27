@@ -1,11 +1,11 @@
 import { getDemoUserId, setDemoPersona } from "../demoApi";
 import { addDays, isoDay, totalsByDay } from "./logic";
-import type { FoodEntry, MealSlot, NutritionApi, Profile, WeightLog } from "./types";
+import type { FoodEntry, MealSlot, NutritionApi, Profile, WeightLog, WorkoutLog } from "./types";
 
 // In-memory stand-in for the nutrition tables. Each demo persona gets its own
 // private data, mirroring the owner-only rules in 003_nutrition.sql.
 
-interface Store { profile: Profile; food: FoodEntry[]; water: Record<string, number>; weights: WeightLog[] }
+interface Store { profile: Profile; food: FoodEntry[]; water: Record<string, number>; weights: WeightLog[]; workouts: WorkoutLog[] }
 const stores = new Map<string, Store>();
 const uid = () => Math.random().toString(36).slice(2, 10);
 const delay = <T>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), 80));
@@ -39,7 +39,10 @@ function seed(userId: string): Store {
       user_id: userId, display_name: userId === "user-member" ? "Jordan" : userId === "user-vendor" ? "Maya" : "Alex",
       kcal_goal: 2100, protein_goal_g: 140, carbs_goal_g: 230, fat_goal_g: 70, water_goal_glasses: 8,
       start_weight_kg: 84.6, goal_weight_kg: 78.6, weekly_email: true, onboarded_at: addDays(today, -56) + "T08:00:00Z", created_at: addDays(today, -56) + "T08:00:00Z",
+      conditions: userId === "user-member" ? ["diabetes", "focus"] : [], health_consent_at: userId === "user-member" ? addDays(today, -56) + "T08:00:00Z" : null,
+      food_preferences: [], fitness_level: "beginner", workout_place: "home", workout_days: 3,
     },
+    workouts: [{ done_on: addDays(today, -1), session_id: "cardio", minutes: 25 }, { done_on: addDays(today, -3), session_id: "strength-a", minutes: 27 }],
     food,
     water: { [today]: 5 },
     weights: WEIGHTS.map((w, i) => ({ measured_on: addDays(today, -7 * (WEIGHTS.length - 1 - i)), weight_kg: w })),
@@ -55,7 +58,13 @@ function store(): Store {
 
 export const demoNutrition: NutritionApi = {
   getProfile: async () => (getDemoUserId() ? delay(store().profile) : null),
-  updateProfile: async (patch) => { const s = store(); Object.assign(s.profile, patch); return delay(s.profile); },
+  updateProfile: async (patch) => {
+    const s = store();
+    const next = { ...s.profile, ...patch };
+    if (next.conditions.length && !next.health_consent_at) throw new Error("Please agree to store your health focus first.");
+    s.profile = next;
+    return delay(s.profile);
+  },
   listFood: async (day) => delay(store().food.filter((f) => f.eaten_on === day)),
   addFood: async (input) => {
     if (!input.name.trim()) throw new Error("Give the food a name.");
@@ -71,7 +80,13 @@ export const demoNutrition: NutritionApi = {
   listWeights: async () => delay([...store().weights].sort((a, b) => a.measured_on.localeCompare(b.measured_on))),
   exportData: async () => {
     const s = store();
-    return delay({ exported_at: new Date().toISOString(), account: { email: `${getDemoUserId()}@demo` }, profile: s.profile, food_log: s.food, water: s.water, weight: s.weights });
+    return delay({ exported_at: new Date().toISOString(), account: { email: `${getDemoUserId()}@demo` }, profile: s.profile, food_log: s.food, water: s.water, weight: s.weights, workouts: s.workouts });
+  },
+  listWorkouts: async (from, to) => delay(store().workouts.filter((w) => w.done_on >= from && w.done_on <= to)),
+  setWorkoutDone: async (day, sessionId, minutes) => {
+    const s = store();
+    s.workouts = s.workouts.filter((w) => !(w.done_on === day && w.session_id === sessionId));
+    if (minutes !== null) s.workouts.push({ done_on: day, session_id: sessionId, minutes });
   },
   deleteAccount: async () => {
     const id = getDemoUserId();

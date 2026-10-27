@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileText, LogOut, MessageCircle, Shield, SlidersHorizontal, Store, Trash2 } from "lucide-react";
+import { Download, Dumbbell, FileText, LogOut, MessageCircle, Shield, SlidersHorizontal, Store, Trash2 } from "lucide-react";
 import { appUrl } from "@/lib/appUrl";
 import { isNative, reminderEnabled, saveFile, setReminder, tap, type ReminderKind } from "@/lib/native";
 import { fromDisplayWeight, setUnits, toDisplayWeight, useUnits, weightRange, weightUnit } from "@/lib/units";
 import { api } from "@/lib/api";
-import { nutrition, type Profile, type ProfilePatch } from "@/lib/nutrition";
+import { FOOD_PREF_LABEL, conditionGuide, nutrition, type ConditionId, type FoodPref, type Profile, type ProfilePatch } from "@/lib/nutrition";
+import { ConditionIcon, ConditionPicker, FitnessPicker, FoodPrefPicker, type FitnessValue } from "@/components/health";
+import { LEVEL_LABEL, PLACE_LABEL } from "@/lib/fitness";
 import { useProfile } from "@/components/nutrition";
 import { useToast } from "@/components/Toast";
 import { isDemoMode, supabase } from "@/integrations/supabase/client";
@@ -75,6 +77,8 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
         <ErrorNote error={save.error} />
       </section>
 
+      <HealthSection profile={p} />
+
       <section className="card flex animate-rise items-center justify-between gap-3 p-4 [animation-delay:75ms]">
         <div><h2 className="text-base font-bold">Units</h2><p className="text-xs text-ink-muted">Applies on this device</p></div>
         <div className="flex rounded-full bg-[#e8eee7] p-1" role="group" aria-label="Units">
@@ -88,7 +92,7 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
       <section className="card grid animate-rise gap-3 p-4 [animation-delay:100ms]">
         <h2 className="text-base font-bold">Privacy</h2>
         <div className="flex items-center justify-between gap-3">
-          <div><b className="text-sm">Use my health data in the Market</b><p className="text-xs text-ink-muted">Always off. Your meals, weight and goals never choose or rank marketplace listings.</p></div>
+          <div><b className="text-sm">Use my health data in the Market</b><p className="text-xs text-ink-muted">Always off. Your meals, weight, goals and health focus never choose or rank marketplace listings.</p></div>
           <span className="relative h-[26px] w-11 shrink-0 cursor-not-allowed rounded-full bg-[#e8eee7] opacity-70" role="switch" aria-checked="false" aria-disabled="true" aria-label="Locked off"><i className="absolute left-[3px] top-[3px] h-5 w-5 rounded-full bg-white shadow" /></span>
         </div>
         <div className="flex items-center justify-between gap-3">
@@ -185,12 +189,72 @@ function YourData({ email }: { email: string | null }) {
         <button className="btn-outline justify-start text-rose-700 hover:bg-rose-50" onClick={() => setConfirming(true)}><Trash2 className="h-4 w-4" /> Delete my account</button>
       ) : (
         <div className="grid gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3">
-          <p className="text-sm text-rose-900">This permanently deletes <b>{email ?? "your account"}</b> and all your meals, water, weight, goals and questions sent to providers. It can't be undone.</p>
+          <p className="text-sm text-rose-900">This permanently deletes <b>{email ?? "your account"}</b> and all your meals, water, weight, workouts, goals, health focus and questions sent to providers. It can't be undone.</p>
           <Field label='Type DELETE to confirm'><input id="confirm-delete" className="input" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} /></Field>
           <ErrorNote error={remove.error} />
           <div className="flex gap-2">
             <button className="btn-danger" disabled={typed.trim() !== "DELETE" || remove.isPending} onClick={() => remove.mutate()}>{remove.isPending ? "Deleting…" : "Delete forever"}</button>
             <button className="btn-outline" onClick={() => { setConfirming(false); setTyped(""); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function HealthSection({ profile: p }: { profile: Profile }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [conditions, setConditions] = useState<ConditionId[]>(p.conditions);
+  const [consent, setConsent] = useState(!!p.health_consent_at);
+  const [prefs, setPrefs] = useState<FoodPref[]>(p.food_preferences);
+  const [fitness, setFitness] = useState<FitnessValue>({ fitness_level: p.fitness_level, workout_place: p.workout_place, workout_days: p.workout_days });
+  const save = useMutation({
+    mutationFn: () => nutrition.updateProfile({
+      // Withdrawing consent removes the stored conditions.
+      conditions: consent ? conditions : [],
+      health_consent_at: consent && conditions.length ? (p.health_consent_at ?? new Date().toISOString()) : null,
+      food_preferences: prefs, ...fitness,
+    }),
+    onSuccess: (np) => { qc.setQueryData(["profile"], np); setEditing(false); toast("Saved"); },
+  });
+  const start = () => {
+    setConditions(p.conditions); setConsent(!!p.health_consent_at); setPrefs(p.food_preferences);
+    setFitness({ fitness_level: p.fitness_level, workout_place: p.workout_place, workout_days: p.workout_days });
+    setEditing(true);
+  };
+  return (
+    <section id="health" className="card animate-rise p-4 [animation-delay:60ms]">
+      <div className="flex items-center justify-between"><h2 className="text-base font-bold">Health &amp; preferences</h2>
+        {!editing && <button className="text-sm font-semibold text-brand-700" onClick={start}>Edit</button>}</div>
+      {editing ? (
+        <div className="mt-3 grid gap-5">
+          <ConditionPicker value={conditions} onChange={setConditions} consent={consent} onConsent={setConsent} />
+          <FoodPrefPicker value={prefs} onChange={setPrefs} />
+          <FitnessPicker value={fitness} onChange={setFitness} />
+          <ErrorNote error={save.error} />
+          <div className="flex gap-2">
+            <button className="btn-primary" disabled={save.isPending || (conditions.length > 0 && !consent)} onClick={() => save.mutate()}>Save</button>
+            <button className="btn-outline" onClick={() => setEditing(false)}>Cancel</button>
+          </div>
+          {conditions.length > 0 && !consent && <p className="-mt-3 text-xs text-citrus-600">Tick the consent box to save a health focus, or clear your choices.</p>}
+        </div>
+      ) : (
+        <div className="mt-2 grid gap-3 text-sm">
+          <div>
+            <span className="text-[11px] text-ink-muted">Health focus</span>
+            {p.conditions.length ? (
+              <div className="mt-1 flex flex-wrap gap-2">{p.conditions.map((id) => {
+                const g = conditionGuide(id)!;
+                return <Link key={id} to={`/health/${id}`} className="flex items-center gap-2 rounded-full border border-[#d8e2d9] py-1 pl-1 pr-3 font-semibold hover:border-brand-600"><ConditionIcon guide={g} size={24} /> {g.name}</Link>;
+              })}</div>
+            ) : <p className="text-ink-2">None chosen</p>}
+          </div>
+          <div><span className="text-[11px] text-ink-muted">Food preferences</span><p className="text-ink-2">{p.food_preferences.length ? p.food_preferences.map((f) => FOOD_PREF_LABEL[f]).join(", ") : "No restrictions"}</p></div>
+          <div className="flex items-end justify-between gap-2">
+            <div><span className="text-[11px] text-ink-muted">Workouts</span><p className="text-ink-2">{LEVEL_LABEL[p.fitness_level]} · {PLACE_LABEL[p.workout_place]} · {p.workout_days} days a week</p></div>
+            <Link to="/workouts" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-700"><Dumbbell className="h-3.5 w-3.5" /> My plan</Link>
           </div>
         </div>
       )}

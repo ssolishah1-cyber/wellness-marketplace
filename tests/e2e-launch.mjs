@@ -31,6 +31,20 @@ await p.fill("#w-goal", "175"); await p.waitForTimeout(150);
 await p.fill("#w-goal", "150");
 await p.getByRole("button", { name: /Moderate/ }).click();
 await p.getByRole("button", { name: /Continue/ }).click(); await p.waitForTimeout(300);
+// health & food step: a health focus needs consent
+const sugar = p.getByRole("button", { name: /Blood sugar/ });
+if ((await sugar.getAttribute("aria-pressed")) !== "true") await sugar.click();
+await p.uncheck("#health-consent");
+(await p.getByRole("button", { name: /Continue/ }).isDisabled()) ? ok("health focus needs consent before continuing") : fail("health focus saved without consent");
+await p.check("#health-consent");
+await p.getByRole("button", { name: "Vegetarian", exact: true }).click();
+await p.screenshot({ path: `${OUT}/l0-setup-health.png` });
+await p.getByRole("button", { name: /Continue/ }).click(); await p.waitForTimeout(300);
+// fitness step
+await p.getByRole("button", { name: "At the gym" }).click();
+await p.getByRole("button", { name: "4", exact: true }).click();
+await p.getByRole("button", { name: /Continue/ }).click(); await p.waitForTimeout(300);
+(await p.getByText("Carbs are capped at about 40%").count()) ? ok("blood-sugar focus caps carbs") : fail("no carb cap note");
 const kcal = await p.inputValue("#w-kcal_goal");
 Number(kcal) > 1200 && Number(kcal) < 2400 ? ok(`suggested ${kcal} kcal`) : fail("kcal " + kcal);
 await p.screenshot({ path: `${OUT}/l1-setup-targets.png` });
@@ -39,10 +53,25 @@ await p.getByRole("button", { name: /Save my goals/ }).click(); await p.waitForT
 const ring = await p.locator('section[aria-label="Today\'s calories and macros"]').innerText().catch(() => "");
 ring.includes("of 1,750") ? ok("home uses the saved 1,750 kcal goal") : fail("home ring: " + ring);
 (await p.getByText("Good", { exact: false }).first().innerText()).includes("Sam") ? ok("greets by new name") : fail("name not saved");
+const forYou = await p.locator('section[aria-label="For you"]').innerText().catch(() => "");
+forYou.includes("Blood sugar") ? ok("home shows the Blood sugar card") : fail("For you: " + forYou);
+const ideas = await p.locator('section[aria-label="Meal ideas"]').innerText().catch(() => "");
+ideas && !/chicken|salmon|tuna|turkey|beef|fish/i.test(ideas) ? ok("meal ideas respect vegetarian") : fail("ideas: " + ideas);
+await p.screenshot({ path: `${OUT}/l1b-home-for-you.png`, fullPage: true });
+await p.locator('a[aria-label="Today\'s workout"]').click(); await p.waitForTimeout(800);
+(await p.getByText("At the gym · 4 days a week").count()) ? ok("workout plan uses gym, 4 days") : fail("workout settings not applied");
+await p.screenshot({ path: `${OUT}/l1c-workouts.png`, fullPage: true });
+const markDone = p.getByRole("button", { name: /Mark as done/ });
+if (await markDone.count()) { await markDone.click(); await p.waitForTimeout(600); (await p.getByText("Done · tap to undo").count()) ? ok("workout marked done") : fail("mark done"); }
+else ok("today is a rest day in this plan");
+await p.getByRole("link", { name: "Home", exact: true }).first().click(); await p.waitForTimeout(600);
+await p.locator('section[aria-label="For you"] a[href="/app/health/diabetes"]').click(); await p.waitForTimeout(900);
+(await p.getByText("Eat more").count()) && (await p.getByText("not medical advice", { exact: false }).count()) ? ok("blood sugar guide with disclaimer") : fail("condition page");
+await p.screenshot({ path: `${OUT}/l1d-condition.png`, fullPage: true });
 
 // ---- profile: legal links, download, delete ----
 await p.locator('nav a[href="/app/profile"]').last().click(); await p.waitForTimeout(800);
-for (const t of ["Privacy Policy", "Terms of Use", "Help & support", "Download my data", "Delete my account", "Recalculate", "lb · ft"]) (await p.getByText(t).count()) ? ok(`profile shows "${t}"`) : fail(`missing "${t}"`);
+for (const t of ["Health & preferences", "Privacy Policy", "Terms of Use", "Help & support", "Download my data", "Delete my account", "Recalculate", "lb · ft"]) (await p.getByText(t).count()) ? ok(`profile shows "${t}"`) : fail(`missing "${t}"`);
 const [dl] = await Promise.all([p.waitForEvent("download", { timeout: 5000 }).catch(() => null), p.getByRole("button", { name: "Download my data" }).click()]);
 dl && /my-nutrition-data-\d{4}-\d{2}-\d{2}\.json/.test(dl.suggestedFilename()) ? ok("download produces " + dl.suggestedFilename()) : fail("no download");
 await p.getByRole("button", { name: "Delete my account" }).click();

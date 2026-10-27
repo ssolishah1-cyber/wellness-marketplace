@@ -34,6 +34,8 @@ export function PrivacyPage() {
       <ul>
         <li><b>Account:</b> your email address and an encrypted password.</li>
         <li><b>Health and nutrition data you enter:</b> food you log, calories and nutrients, water, weigh-ins, and your goals. If you use the setup wizard, the age, height and sex you enter are used once to calculate suggested targets and are not stored.</li>
+        <li><b>Health focus (optional):</b> if you choose one, such as blood sugar, blood pressure, IBS, focus or stress &amp; sleep, we store it only after you give consent, and use it only to tailor tips, meal ideas and workouts in the app. Remove it or withdraw consent at any time in Profile.</li>
+        <li><b>Preferences and workouts:</b> food preferences and allergies, fitness level, where and how often you work out, and the workouts you mark as done.</li>
         <li><b>Questions you send to providers in the Market:</b> the name, email and message you choose to send, only after you tick the consent box.</li>
         <li><b>Marketplace clicks:</b> a daily count of how often each listing is opened. These counts contain no information about who clicked.</li>
       </ul>
@@ -48,7 +50,7 @@ export function PrivacyPage() {
       <h2>What we never do</h2>
       <ul>
         <li>We never sell your personal or health data.</li>
-        <li>We never use your meals, weight, goals or other health data to choose, rank or target marketplace listings or ads.</li>
+        <li>We never use your meals, weight, goals, health focus or other health data to choose, rank or target marketplace listings or ads.</li>
         <li>We never share your health data with marketplace partners, including affiliated partners such as TriggerMD and XIMMD.</li>
       </ul>
 
@@ -61,7 +63,7 @@ export function PrivacyPage() {
       <h2>Your choices and rights</h2>
       <ul>
         <li><b>Download your data</b> at any time from Profile.</li>
-        <li><b>Delete your account</b> from Profile. This permanently removes your account, food log, water, weight, goals and questions you sent.</li>
+        <li><b>Delete your account</b> from Profile. This permanently removes your account, food log, water, weight, workouts, goals, health focus and questions you sent.</li>
         <li>Correct your goals and entries in the app at any time.</li>
       </ul>
 
@@ -72,7 +74,7 @@ export function PrivacyPage() {
       <p>The app is for adults 18 and over. We do not knowingly collect data from anyone under 18.</p>
 
       <h2>Not medical advice</h2>
-      <p>Coaching tips and suggested targets are general information, not medical advice. Talk to a qualified clinician about your health.</p>
+      <p>Coaching tips, condition guides, meal ideas, workouts and suggested targets are general information, not medical advice or treatment. Talk to a qualified clinician about your health.</p>
 
       <h2>Changes</h2>
       <p>If we make material changes, we will tell you in the app before they take effect.</p>

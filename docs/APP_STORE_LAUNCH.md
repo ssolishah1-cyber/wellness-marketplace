@@ -54,6 +54,9 @@ Wellness Jumpstart makes healthy eating simple.
 • Log meals in seconds with quick picks or your own foods
 • See calories, protein, carbs and fat against your personal targets
 • Get daily tips based only on what you've logged, with no sponsored advice
+• Tailored guidance for blood sugar, blood pressure, IBS, focus, and stress & sleep
+• Meal ideas that fit your food preferences and allergies, logged in one tap
+• A weekly workout plan for home or gym, matched to your level and goals
 • Track water with a tap and keep your streak going
 • Follow your weight trend and progress toward your goal
 • Gentle reminders to log meals and drink water
@@ -63,7 +66,7 @@ Your health data is private to your account and is never used to choose or rank 
 
 Wellness Jumpstart provides general wellness information and is not medical advice.
 
-**Keywords (iOS):** nutrition,calorie,macro,meal,food,diet,water,weight,protein,tracker
+**Keywords (iOS):** nutrition,calorie,macro,meal,diet,workout,diabetes,blood pressure,IBS,weight,tracker
 **Category:** Health & Fitness
 **Age rating:** 17+ / Mature (contains links to telehealth services) — or 12+ if Apple's questionnaire allows; app requires 18+ at sign-up.
 **Support URL:** https://<your-site>/app/support
@@ -74,7 +77,7 @@ Wellness Jumpstart provides general wellness information and is not medical advi
 
 **Apple App Privacy ("nutrition label")** — Data linked to the user, used for App Functionality only, not used for tracking:
 - Contact Info: Email address; Name (only if entered, and when sending a provider a question)
-- Health & Fitness: Health (weight), Fitness (nutrition and water logs)
+- Health & Fitness: Health (weight; optional health focus such as diabetes, blood pressure or IBS, saved only with consent), Fitness (nutrition, water and workout logs)
 - User Content: Other user content (questions sent to providers)
 - Identifiers: User ID
 Not collected: location, contacts, browsing history, advertising data. No tracking.
@@ -84,7 +87,7 @@ Not collected: location, contacts, browsing history, advertising data. No tracki
 - Purpose: App functionality, Account management. Not shared with third parties (hosting providers process on our behalf). Not used for ads.
 - Encrypted in transit: Yes. Users can request deletion: Yes (in app and at the deletion URL).
 
-**Health app notes for review:** The app is a wellness tracker; it does not diagnose or treat. Telehealth listings link to licensed third-party providers (TriggerMD), are labelled Sponsored/Affiliated, and are never targeted using health data.
+**Health app notes for review:** The app is a wellness tracker; it does not diagnose or treat. Condition guides (blood sugar, blood pressure, IBS, focus, stress & sleep) are general education with cited public-health sources and a "not medical advice" notice; the optional health focus is stored only after explicit in-app consent, can be removed at any time, and is never used for ads or the Market. Workouts are general fitness plans with a "check with your doctor" notice. Telehealth listings link to licensed third-party providers (TriggerMD), are labelled Sponsored/Affiliated, and are never targeted using health data.
 
 ## 7. Review notes and demo account
 

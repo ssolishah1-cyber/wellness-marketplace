@@ -6,3 +6,4 @@ import type { NutritionApi } from "./types";
 export const nutrition: NutritionApi = supabase ? supabaseNutrition(supabase) : demoNutrition;
 export * from "./types";
 export * from "./logic";
+export * from "./health";

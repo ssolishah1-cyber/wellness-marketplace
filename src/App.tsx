@@ -20,6 +20,8 @@ import { PrivacyPage, TermsPage } from "@/pages/LegalPage";
 import HelpPage from "@/pages/HelpPage";
 import { ToastProvider } from "@/components/Toast";
 import ProfilePage from "@/pages/ProfilePage";
+import ConditionPage from "@/pages/ConditionPage";
+import WorkoutsPage from "@/pages/WorkoutsPage";
 
 // The shareable demo build keeps routes in memory (no server rewrites needed)
 // and opens straight on the Market. VITE_BASE lets the app live under a
@@ -58,6 +60,8 @@ export default function App() {
             <Route path="/meals" element={<MealsPage />} />
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/workouts" element={<WorkoutsPage />} />
+            <Route path="/health/:id" element={<ConditionPage />} />
             <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />

@@ -14,6 +14,8 @@ export const useWater = (day: string, enabled = true) => useQuery({ queryKey: ["
 export const useTotals = (from: string, to: string, enabled = true) =>
   useQuery({ queryKey: ["totals", from, to], queryFn: () => nutrition.dailyTotals(from, to), enabled });
 export const useWeights = (enabled = true) => useQuery({ queryKey: ["weights"], queryFn: () => nutrition.listWeights(), enabled });
+export const useWorkouts = (from: string, to: string, enabled = true) =>
+  useQuery({ queryKey: ["workouts", from, to], queryFn: () => nutrition.listWorkouts(from, to), enabled });
 
 /** Invalidate everything that depends on the food log. */
 export function useRefreshFood() {

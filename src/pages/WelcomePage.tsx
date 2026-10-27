@@ -3,29 +3,37 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, Info } from "lucide-react";
 import {
-  ACTIVITY_LABEL, isoDay, nutrition, suggestTargets, type Activity, type GoalKind, type Sex, type Targets,
+  ACTIVITY_LABEL, isoDay, nutrition, suggestTargets, type Activity, type ConditionId, type FoodPref, type GoalKind, type Profile, type Sex, type Targets,
 } from "@/lib/nutrition";
+import { ConditionPicker, FitnessPicker, FoodPrefPicker, type FitnessValue } from "@/components/health";
 import { SignInPrompt, useProfile } from "@/components/nutrition";
 import { ErrorNote, Field, Spinner, useViewer } from "@/components/ui";
 import { fromDisplayWeight, ftInToCm, useUnits, weightUnit } from "@/lib/units";
 
-const STEPS = ["About you", "Your goal", "Daily targets"];
+const STEPS = ["About you", "Your goal", "Health & food", "Fitness", "Daily targets"];
+const LAST = STEPS.length - 1;
 
 export default function WelcomePage() {
   const { data: viewer, isLoading } = useViewer();
   const profile = useProfile();
   if (isLoading || profile.isLoading) return <Spinner />;
   if (!viewer?.userId || !profile.data) return <SignInPrompt what="set up your goals" />;
-  return <Wizard firstRun={!profile.data.onboarded_at} initialName={profile.data.display_name ?? ""} />;
+  return <Wizard profile={profile.data} />;
 }
 
-function Wizard({ firstRun, initialName }: { firstRun: boolean; initialName: string }) {
+function Wizard({ profile }: { profile: Profile }) {
+  const firstRun = !profile.onboarded_at;
+  const initialName = profile.display_name ?? "";
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const units = useUnits();
   const U = weightUnit(units);
   const [f, setF] = useState({ name: initialName, sex: "" as Sex | "", age: "", height: "", heightFt: "", heightIn: "", weight: "", goal: "lose" as GoalKind, goalWeight: "", activity: "light" as Activity });
+  const [conditions, setConditions] = useState<ConditionId[]>(profile.conditions ?? []);
+  const [consent, setConsent] = useState(!!profile.health_consent_at);
+  const [prefs, setPrefs] = useState<FoodPref[]>(profile.food_preferences ?? []);
+  const [fitness, setFitness] = useState<FitnessValue>({ fitness_level: profile.fitness_level ?? "beginner", workout_place: profile.workout_place ?? "home", workout_days: profile.workout_days ?? 3 });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const num = (s: string) => Number(s.replace(",", "."));
 
@@ -35,13 +43,23 @@ function Wizard({ firstRun, initialName }: { firstRun: boolean; initialName: str
   const gw = f.goalWeight === "" ? NaN : fromDisplayWeight(num(f.goalWeight), units);
   const step1Ok = f.sex !== "" && num(f.age) >= 18 && num(f.age) <= 100 && heightCm >= 120 && heightCm <= 230 && weightKg >= 30 && weightKg <= 300;
   const step2Ok = f.goal === "maintain" || (gw >= 30 && gw <= 300 && (f.goal === "lose" ? gw < weightKg : gw > weightKg));
+  const healthOk = conditions.length === 0 || consent;
+  const stepOk = [step1Ok, step2Ok, healthOk, true][step] ?? true;
+  const lowerCarb = conditions.includes("diabetes") || prefs.includes("low_carb");
 
   const suggested = useMemo<Targets | null>(() => (step1Ok ? suggestTargets({
-    sex: f.sex as Sex, age: num(f.age), heightCm, weightKg, activity: f.activity, goal: f.goal,
-  }) : null), [step1Ok, f.sex, f.age, heightCm, weightKg, f.activity, f.goal]);
+    sex: f.sex as Sex, age: num(f.age), heightCm, weightKg, activity: f.activity, goal: f.goal, lowerCarb,
+  }) : null), [step1Ok, f.sex, f.age, heightCm, weightKg, f.activity, f.goal, lowerCarb]);
   const [targets, setTargets] = useState<Record<keyof Targets, string> | null>(null);
   const t = targets ?? (suggested ? Object.fromEntries(Object.entries(suggested).map(([k, v]) => [k, String(v)])) as Record<keyof Targets, string> : null);
 
+  // Conditions are stored only with consent; unticking consent clears them.
+  const healthPatch = () => ({
+    conditions: consent ? conditions : [],
+    health_consent_at: consent && conditions.length ? (profile.health_consent_at ?? new Date().toISOString()) : null,
+    food_preferences: prefs,
+    ...fitness,
+  });
   const finish = useMutation({
     mutationFn: async (skip: boolean) => {
       if (!skip && t) {
@@ -51,12 +69,13 @@ function Wizard({ firstRun, initialName }: { firstRun: boolean; initialName: str
           kcal_goal: Number(t.kcal_goal), protein_goal_g: Number(t.protein_goal_g), carbs_goal_g: Number(t.carbs_goal_g),
           fat_goal_g: Number(t.fat_goal_g), water_goal_glasses: Number(t.water_goal_glasses),
           start_weight_kg: weightKg, goal_weight_kg: f.goal === "maintain" ? weightKg : gw,
+          ...healthPatch(),
           onboarded_at: new Date().toISOString(),
         });
       }
       return nutrition.updateProfile({ display_name: f.name.trim() || null, onboarded_at: new Date().toISOString() });
     },
-    onSuccess: async (p) => { qc.setQueryData(["profile"], p); await qc.invalidateQueries({ queryKey: ["weights"] }); navigate("/"); },
+    onSuccess: async (p: Profile) => { qc.setQueryData(["profile"], p); await qc.invalidateQueries({ queryKey: ["weights"] }); navigate("/"); },
   });
 
   const choice = (active: boolean) => `rounded-2xl border p-3 text-left text-sm transition ${active ? "border-brand-600 bg-brand-50 ring-2 ring-brand-100" : "border-[#d8e2d9] bg-white hover:border-brand-500"}`;
@@ -134,9 +153,19 @@ function Wizard({ firstRun, initialName }: { firstRun: boolean; initialName: str
           </>
         )}
 
-        {step === 2 && t && (
+        {step === 2 && (
+          <>
+            <ConditionPicker value={conditions} onChange={setConditions} consent={consent} onConsent={setConsent} />
+            <FoodPrefPicker value={prefs} onChange={setPrefs} />
+          </>
+        )}
+
+        {step === 3 && <FitnessPicker value={fitness} onChange={setFitness} />}
+
+        {step === LAST && t && (
           <>
             <p className="text-sm text-ink-2">Here's a starting point based on your answers. You can change any number now or later in Profile.</p>
+            {lowerCarb && <p className="rounded-xl bg-sky-50 p-3 text-xs text-sky-600">Carbs are capped at about 40% of calories for your blood-sugar or lower-carb choice.</p>}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {([["kcal_goal", "Calories (kcal)"], ["protein_goal_g", "Protein (g)"], ["carbs_goal_g", "Carbs (g)"], ["fat_goal_g", "Fat (g)"], ["water_goal_glasses", "Water (glasses)"]] as [keyof Targets, string][]).map(([k, label]) => (
                 <Field key={k} label={label}>
@@ -156,8 +185,8 @@ function Wizard({ firstRun, initialName }: { firstRun: boolean; initialName: str
             : firstRun
               ? <button type="button" className="text-sm text-ink-muted hover:text-ink" disabled={finish.isPending} onClick={() => finish.mutate(true)}>Skip for now</button>
               : <button type="button" className="text-sm text-ink-muted hover:text-ink" onClick={() => navigate("/profile")}>Cancel</button>}
-          {step < 2
-            ? <button type="button" className="btn-primary" disabled={step === 0 ? !step1Ok : !step2Ok} onClick={() => { setTargets(null); setStep(step + 1); }}>Continue <ArrowRight className="h-4 w-4" /></button>
+          {step < LAST
+            ? <button type="button" className="btn-primary" disabled={!stepOk} onClick={() => { setTargets(null); setStep(step + 1); }}>Continue <ArrowRight className="h-4 w-4" /></button>
             : <button type="button" className="btn-primary" disabled={finish.isPending} onClick={() => finish.mutate(false)}><Check className="h-4 w-4" /> Save my goals</button>}
         </div>
       </section>
