@@ -5,6 +5,7 @@ import { Apple, Coffee, CupSoda, Egg, Fish, LogIn, Salad, Soup, Utensils, X, typ
 import { isDemoMode } from "@/integrations/supabase/client";
 import { MEAL_LABEL, QUICK_FOODS, nutrition, type MealSlot } from "@/lib/nutrition";
 import { ErrorNote, Field } from "./ui";
+import { tap } from "@/lib/native";
 
 // ---------- data hooks ----------
 export const useProfile = () => useQuery({ queryKey: ["profile"], queryFn: () => nutrition.getProfile() });
@@ -89,7 +90,7 @@ export function WaterGlasses({ day, goal }: { day: string; goal: number }) {
     <div className="flex flex-wrap gap-1.5">
       {Array.from({ length: Math.max(goal, n) }, (_, i) => (
         <button key={i} type="button" aria-label={`${i + 1} glass${i ? "es" : ""}`} aria-pressed={i < n}
-          onClick={() => set.mutate(n === i + 1 ? i : i + 1)}
+          onClick={() => { tap(); set.mutate(n === i + 1 ? i : i + 1); }}
           className="relative h-[34px] w-[26px] overflow-hidden rounded-b-[9px] rounded-t-md border-2 border-sky-500">
           <i className={`absolute inset-x-0 bottom-0 bg-sky-500 transition-[height] duration-500 ${i < n ? "h-full" : "h-0"}`} />
         </button>
@@ -126,7 +127,7 @@ export function AddFoodSheet({ day, meal: initialMeal, onClose, onAdded }: { day
   const [f, setF] = useState({ name: "", kcal: "", protein_g: "", carbs_g: "", fat_g: "" });
   const add = useMutation({
     mutationFn: (food: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number }) => nutrition.addFood({ ...food, eaten_on: day, meal }),
-    onSuccess: async (e) => { await refresh(); onAdded(e.name, e.kcal); onClose(); },
+    onSuccess: async (e) => { tap(); await refresh(); onAdded(e.name, e.kcal); onClose(); },
   });
   const n = (s: string) => (s.trim() === "" ? 0 : Number(s));
   return (

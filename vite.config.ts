@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import appConfig from "./app.config.json";
 
 // The app needs the Supabase project URL and its public (anon/publishable) key.
 // Accept the names Vercel and Supabase commonly use, but only these two values
@@ -40,6 +41,9 @@ export default defineConfig(({ mode }) => {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(url),
       "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(key),
+      // Native builds: deep links back into the app use the app ID as URL scheme.
+      "import.meta.env.VITE_APP_ID": JSON.stringify(appConfig.appId),
+      "import.meta.env.VITE_APP_NAME": JSON.stringify(env.VITE_APP_NAME || appConfig.appName),
     },
   };
 });

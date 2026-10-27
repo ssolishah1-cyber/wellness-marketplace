@@ -1,0 +1,79 @@
+# Cloud builds for the iPhone and Android apps (https://codemagic.io).
+# One-time setup in Codemagic (see docs/APP_STORE_LAUNCH.md):
+#   - Environment group "supabase": SUPABASE_URL, SUPABASE_ANON_KEY (the public key)
+#   - Android: upload keystore named "upload_keystore"; Google Play service account
+#     JSON in group "google_play" as GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+#   - iOS: App Store Connect API key integration named "app_store_connect"
+workflows:
+  android-release:
+    name: Android → Google Play (internal testing)
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      groups: [supabase, google_play]
+      android_signing: [upload_keystore]
+      node: 22
+      java: 21
+      vars:
+        APP_VERSION: 1.0.0
+    scripts:
+      - name: Install
+        script: npm ci
+      - name: Tests
+        script: npm test
+      - name: Build app and sync Android project
+        script: |
+          npm run native:config
+          npm run build:native
+          npx cap sync android
+      - name: Build signed app bundle
+        script: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+
+  ios-release:
+    name: iPhone → TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: app_store_connect
+    environment:
+      groups: [supabase]
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.wellnessjumpstart.app # must match app.config.json
+      node: 22
+      xcode: latest
+      vars:
+        APP_VERSION: 1.0.0
+    scripts:
+      - name: Install
+        script: npm ci
+      - name: Tests
+        script: npm test
+      - name: Build app and sync iOS project
+        script: |
+          npm run native:config
+          npm run build:native
+          npx cap sync ios
+      - name: Signing
+        script: xcode-project use-profiles
+      - name: Version
+        script: |
+          sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = $APP_VERSION;/g; s/CURRENT_PROJECT_VERSION = [^;]+;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" ios/App/App.xcodeproj/project.pbxproj
+      - name: Build
+        script: xcode-project build-ipa --project "ios/App/App.xcodeproj" --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

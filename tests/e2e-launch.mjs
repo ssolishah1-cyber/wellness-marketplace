@@ -23,12 +23,12 @@ const page = async (url) => {
 let p = await page(`${BASE}/welcome`);
 await p.fill("#w-name", "Sam");
 await p.getByRole("button", { name: "Female" }).click();
-await p.fill("#w-age", "35"); await p.fill("#w-height", "165"); await p.fill("#w-weight", "75");
+await p.fill("#w-age", "35"); await p.fill("#w-height-ft", "5"); await p.fill("#w-height-in", "5"); await p.fill("#w-weight", "165");
 await p.getByRole("button", { name: /Continue/ }).click(); await p.waitForTimeout(300);
 await p.getByRole("button", { name: /Continue/ }).isDisabled() ? ok("goal step blocks until goal weight is valid") : fail("goal step not validated");
-await p.fill("#w-goal", "80"); await p.waitForTimeout(150);
+await p.fill("#w-goal", "175"); await p.waitForTimeout(150);
 (await p.getByText("Goal weight should be below your current weight.").count()) ? ok("rejects a 'lose' goal above current weight") : fail("no goal-weight warning");
-await p.fill("#w-goal", "68");
+await p.fill("#w-goal", "150");
 await p.getByRole("button", { name: /Moderate/ }).click();
 await p.getByRole("button", { name: /Continue/ }).click(); await p.waitForTimeout(300);
 const kcal = await p.inputValue("#w-kcal_goal");
@@ -42,7 +42,7 @@ ring.includes("of 1,750") ? ok("home uses the saved 1,750 kcal goal") : fail("ho
 
 // ---- profile: legal links, download, delete ----
 await p.locator('nav a[href="/app/profile"]').last().click(); await p.waitForTimeout(800);
-for (const t of ["Privacy Policy", "Terms of Use", "Download my data", "Delete my account", "Recalculate"]) (await p.getByText(t).count()) ? ok(`profile shows "${t}"`) : fail(`missing "${t}"`);
+for (const t of ["Privacy Policy", "Terms of Use", "Help & support", "Download my data", "Delete my account", "Recalculate", "lb · ft"]) (await p.getByText(t).count()) ? ok(`profile shows "${t}"`) : fail(`missing "${t}"`);
 const [dl] = await Promise.all([p.waitForEvent("download", { timeout: 5000 }).catch(() => null), p.getByRole("button", { name: "Download my data" }).click()]);
 dl && /my-nutrition-data-\d{4}-\d{2}-\d{2}\.json/.test(dl.suggestedFilename()) ? ok("download produces " + dl.suggestedFilename()) : fail("no download");
 await p.getByRole("button", { name: "Delete my account" }).click();
@@ -54,6 +54,10 @@ await p.locator('nav a[href="/app/privacy"]').count(); // not in nav; open direc
 await p.goto(`${BASE}/privacy`); await p.waitForTimeout(600);
 (await p.getByRole("heading", { name: "Privacy Policy" }).count()) && (await p.getByText("never sell your personal or health data").count()) ? ok("privacy policy renders") : fail("privacy page");
 await p.screenshot({ path: `${OUT}/l2-privacy.png`, fullPage: true });
+await p.goto(`${BASE}/delete-account`); await p.waitForTimeout(500);
+(await p.getByText("Without the app:").count()) ? ok("public account-deletion page") : fail("delete-account page");
+await p.goto(`${BASE}/progress`); await p.waitForTimeout(800);
+(await p.getByText("Sign in to see your progress").count()) ? ok("progress requires sign-in after delete") : fail("progress after delete");
 await p.goto(`${BASE}/terms`); await p.waitForTimeout(500);
 (await p.getByRole("heading", { name: "Terms of Use" }).count()) ? ok("terms render") : fail("terms page");
 !(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)) ? ok("no horizontal overflow") : fail("overflow");

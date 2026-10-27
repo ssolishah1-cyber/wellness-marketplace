@@ -1,4 +1,7 @@
-import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { initNative } from "@/lib/native";
+import { supabase } from "@/integrations/supabase/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import MarketHome from "@/pages/MarketHome";
@@ -14,6 +17,7 @@ import ProgressPage from "@/pages/ProgressPage";
 import WelcomePage from "@/pages/WelcomePage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import { PrivacyPage, TermsPage } from "@/pages/LegalPage";
+import HelpPage from "@/pages/HelpPage";
 import { ToastProvider } from "@/components/Toast";
 import ProfilePage from "@/pages/ProfilePage";
 
@@ -27,6 +31,19 @@ function Router({ children }: { children: React.ReactNode }) {
     : <BrowserRouter basename={basename}>{children}</BrowserRouter>;
 }
 
+// Phone app: back button, deep links (sign-up confirmation, password reset), splash screen.
+function NativeBridge() {
+  const navigate = useNavigate();
+  useEffect(() => initNative({
+    navigate: (p) => navigate(p, { replace: true }),
+    onAuthLink: async (u) => {
+      const code = u.searchParams.get("code");
+      if (code && supabase) await supabase.auth.exchangeCodeForSession(code);
+    },
+  }), [navigate]);
+  return null;
+}
+
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 export default function App() {
@@ -34,6 +51,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
       <Router>
+        <NativeBridge />
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<HomePage />} />
@@ -44,6 +62,8 @@ export default function App() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/support" element={<HelpPage />} />
+            <Route path="/delete-account" element={<HelpPage />} />
             <Route path="/market" element={<MarketHome />} />
             <Route path="/market/category/:slug" element={<CategoryPage />} />
             <Route path="/market/brand/:slug" element={<BrandPage />} />

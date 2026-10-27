@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileText, LogOut, MessageCircle, Shield, SlidersHorizontal, Store, Trash2 } from "lucide-react";
 import { appUrl } from "@/lib/appUrl";
+import { isNative, reminderEnabled, saveFile, setReminder, tap, type ReminderKind } from "@/lib/native";
+import { fromDisplayWeight, setUnits, toDisplayWeight, useUnits, weightRange, weightUnit } from "@/lib/units";
 import { api } from "@/lib/api";
 import { nutrition, type Profile, type ProfilePatch } from "@/lib/nutrition";
 import { useProfile } from "@/components/nutrition";
@@ -33,6 +35,7 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
   const profile = useProfile();
   const inquiries = useQuery({ queryKey: ["my-inquiries"], queryFn: () => api.listInquiries() });
   const [editing, setEditing] = useState(false);
+  const units = useUnits();
   const save = useMutation({
     mutationFn: (patch: ProfilePatch) => nutrition.updateProfile(patch),
     onSuccess: (p) => { qc.setQueryData(["profile"], p); setEditing(false); toast("Saved"); },
@@ -66,10 +69,20 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
             <Goal k="Carbs" v={`${p.carbs_goal_g} g`} />
             <Goal k="Fat" v={`${p.fat_goal_g} g`} />
             <Goal k="Water" v={`${p.water_goal_glasses} glasses`} />
-            <Goal k="Goal weight" v={p.goal_weight_kg ? `${p.goal_weight_kg} kg` : "Not set"} />
+            <Goal k="Goal weight" v={p.goal_weight_kg ? `${toDisplayWeight(p.goal_weight_kg, units)} ${weightUnit(units)}` : "Not set"} />
           </dl>
         )}
         <ErrorNote error={save.error} />
+      </section>
+
+      <section className="card flex animate-rise items-center justify-between gap-3 p-4 [animation-delay:75ms]">
+        <div><h2 className="text-base font-bold">Units</h2><p className="text-xs text-ink-muted">Applies on this device</p></div>
+        <div className="flex rounded-full bg-[#e8eee7] p-1" role="group" aria-label="Units">
+          {([["imperial", "lb · ft"], ["metric", "kg · cm"]] as const).map(([u, label]) => (
+            <button key={u} aria-pressed={units === u} onClick={() => setUnits(u)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${units === u ? "bg-brand-600 text-white" : "text-ink-2"}`}>{label}</button>
+          ))}
+        </div>
       </section>
 
       <section className="card grid animate-rise gap-3 p-4 [animation-delay:100ms]">
@@ -104,12 +117,43 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
         {isStaff && <Link to="/admin/marketplace" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><Shield className="h-5 w-5 text-brand-700" /><span className="flex-1"><b className="block text-sm">Review console</b><span className="text-xs text-ink-muted">Approve listings and vendors</span></span></Link>}
         <Link to="/privacy" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Privacy Policy</b></Link>
         <Link to="/terms" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Terms of Use</b></Link>
+        <Link to="/support" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Help &amp; support</b></Link>
         {!isDemoMode && <div className="p-1.5"><SignOut /></div>}
       </section>
+
+      {isNative && <Reminders />}
 
       <YourData email={email} />
       {isDemoMode && <p className="text-center text-xs text-ink-muted">Demo mode: switch roles using the bar at the top of the page.</p>}
     </div>
+  );
+}
+
+function Reminders() {
+  const toast = useToast();
+  const [on, setOn] = useState({ log: reminderEnabled("log"), water: reminderEnabled("water") });
+  const toggle = async (k: ReminderKind) => {
+    tap();
+    const next = !on[k];
+    const ok = await setReminder(k, next);
+    if (!ok) { toast("Turn on notifications for this app in your phone's Settings"); return; }
+    setOn((s) => ({ ...s, [k]: next }));
+  };
+  const Row = ({ k, title, sub }: { k: ReminderKind; title: string; sub: string }) => (
+    <div className="flex items-center justify-between gap-3">
+      <div><b className="text-sm">{title}</b><p className="text-xs text-ink-muted">{sub}</p></div>
+      <button role="switch" aria-checked={on[k]} aria-label={title} onClick={() => toggle(k)}
+        className={`relative h-[26px] w-11 shrink-0 rounded-full transition ${on[k] ? "bg-brand-600" : "bg-[#e8eee7]"}`}>
+        <i className={`absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all ${on[k] ? "left-[21px]" : "left-[3px]"}`} />
+      </button>
+    </div>
+  );
+  return (
+    <section className="card grid animate-rise gap-3 p-4 [animation-delay:125ms]">
+      <h2 className="text-base font-bold">Reminders</h2>
+      <Row k="log" title="Daily log reminder" sub="Every evening at 8:00 pm" />
+      <Row k="water" title="Water reminders" sub="11:00 am, 2:30 pm and 5:30 pm" />
+    </section>
   );
 }
 
@@ -120,14 +164,9 @@ function YourData({ email }: { email: string | null }) {
   const [typed, setTyped] = useState("");
   const download = useMutation({
     mutationFn: () => nutrition.exportData(),
-    onSuccess: (data) => {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `my-nutrition-data-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      toast("Your data file is downloading");
+    onSuccess: async (data) => {
+      await saveFile(`my-nutrition-data-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(data, null, 2));
+      if (!isNative) toast("Your data file is downloading");
     },
   });
   const remove = useMutation({
@@ -164,13 +203,16 @@ function Goal({ k, v }: { k: string; v: string }) {
 }
 
 function GoalsForm({ profile: p, saving, onSave, onCancel }: { profile: Profile; saving: boolean; onSave: (patch: ProfilePatch) => void; onCancel: () => void }) {
+  const units = useUnits();
+  const U = weightUnit(units);
+  const range = weightRange(units);
   const [f, setF] = useState({
     display_name: p.display_name ?? "", kcal_goal: String(p.kcal_goal), protein_goal_g: String(p.protein_goal_g), carbs_goal_g: String(p.carbs_goal_g),
     fat_goal_g: String(p.fat_goal_g), water_goal_glasses: String(p.water_goal_glasses),
-    start_weight_kg: p.start_weight_kg?.toString() ?? "", goal_weight_kg: p.goal_weight_kg?.toString() ?? "",
+    start_weight_kg: p.start_weight_kg !== null ? String(toDisplayWeight(p.start_weight_kg, units)) : "", goal_weight_kg: p.goal_weight_kg !== null ? String(toDisplayWeight(p.goal_weight_kg, units)) : "",
   });
   const bind = (k: keyof typeof f) => ({ id: `goal-${k}`, value: f[k], onChange: (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value }) });
-  const opt = (s: string) => (s.trim() ? Number(s) : null);
+  const opt = (s: string) => (s.trim() ? fromDisplayWeight(Number(s), units) : null);
   return (
     <form className="mt-3 grid gap-3" onSubmit={(e) => {
       e.preventDefault();
@@ -186,8 +228,8 @@ function GoalsForm({ profile: p, saving, onSave, onCancel }: { profile: Profile;
         <Field label="Carbs (g)"><input className="input num" type="number" min={0} max={800} required {...bind("carbs_goal_g")} /></Field>
         <Field label="Fat (g)"><input className="input num" type="number" min={0} max={300} required {...bind("fat_goal_g")} /></Field>
         <Field label="Water (glasses)"><input className="input num" type="number" min={1} max={20} required {...bind("water_goal_glasses")} /></Field>
-        <Field label="Start weight (kg)"><input className="input num" type="number" step="0.1" min={25} max={400} {...bind("start_weight_kg")} /></Field>
-        <Field label="Goal weight (kg)"><input className="input num" type="number" step="0.1" min={25} max={400} {...bind("goal_weight_kg")} /></Field>
+        <Field label={`Start weight (${U})`}><input className="input num" type="number" step="0.1" min={range.min} max={range.max} {...bind("start_weight_kg")} /></Field>
+        <Field label={`Goal weight (${U})`}><input className="input num" type="number" step="0.1" min={range.min} max={range.max} {...bind("goal_weight_kg")} /></Field>
       </div>
       <div className="flex gap-2"><button className="btn-primary" disabled={saving}>Save goals</button><button type="button" className="btn-outline" onClick={onCancel}>Cancel</button></div>
     </form>

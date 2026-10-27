@@ -63,8 +63,8 @@ const coach = await p.locator('section[aria-label="Coach"]').innerText();
 // progress + weight log
 await nav("/progress"); await p.waitForTimeout(1200);
 await p.screenshot({ path: `${OUT}/n3-progress.png`, fullPage: true });
-await p.fill("#weight", "81.2"); await p.getByRole("button", { name: "Log weight" }).click(); await p.waitForTimeout(800);
-(await p.getByText("Logged 81.2 kg").count()) ? ok("weight logged") : fail("weight toast missing");
+await p.fill("#weight", "179"); await p.getByRole("button", { name: "Log weight" }).click(); await p.waitForTimeout(800);
+(await p.getByText("Logged 179 lb").count()) ? ok("weight logged in lb") : fail("weight toast missing");
 
 // profile goals
 await nav("/profile");

@@ -5,6 +5,7 @@ import { coachTip, isoDay, addDays, loggingStreak, sumMacros, type MealSlot } fr
 import { AddFoodSheet, CalorieRing, MacroBar, SignInPrompt, WaterGlasses, useFood, useProfile, useTotals, useWater, useWeights } from "@/components/nutrition";
 import { Spinner, useViewer } from "@/components/ui";
 import { useToast } from "@/components/Toast";
+import { toDisplayWeight, useUnits, weightUnit } from "@/lib/units";
 
 export default function HomePage() {
   const today = isoDay();
@@ -18,6 +19,7 @@ export default function HomePage() {
   const [adding, setAdding] = useState<MealSlot | null>(null);
   const toast = useToast();
   const navigate = useNavigate();
+  const units = useUnits();
 
   if (isLoading || (signedIn && profile.isLoading)) return <Spinner />;
   if (!signedIn || !profile.data) return <SignInPrompt what="track your nutrition" />;
@@ -28,7 +30,7 @@ export default function HomePage() {
   const streak = loggingStreak(totals.data ?? [], today);
   const w = weights.data ?? [];
   const weekAgo = w.filter((x) => x.measured_on <= addDays(today, -7)).at(-1);
-  const change = w.length && weekAgo ? Math.round((w[w.length - 1].weight_kg - weekAgo.weight_kg) * 10) / 10 : null;
+  const change = w.length && weekAgo ? toDisplayWeight(w[w.length - 1].weight_kg - weekAgo.weight_kg, units) : null;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
@@ -81,7 +83,7 @@ export default function HomePage() {
 
       <section className="grid animate-rise grid-cols-3 gap-2 [animation-delay:240ms]">
         <Stat label="Streak" value={String(streak)} unit={streak === 1 ? "day logged" : "days logged"} />
-        <Stat label="This week" value={change === null ? "—" : `${change > 0 ? "+" : change < 0 ? "−" : ""}${Math.abs(change)}`} unit="kg" />
+        <Stat label="This week" value={change === null ? "—" : `${change > 0 ? "+" : change < 0 ? "−" : ""}${Math.abs(change)}`} unit={weightUnit(units)} />
         <Link to="/meals" className="card p-3 transition hover:border-brand-600"><span className="text-[11px] text-ink-muted">Meals today</span><b className="num block font-display text-[22px]">{(food.data ?? []).length}</b><span className="text-[11px] text-ink-muted">items logged</span></Link>
       </section>
 

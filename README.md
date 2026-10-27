@@ -59,6 +59,15 @@ Optional Vercel variables: `VITE_COMPANY_NAME` and `VITE_SUPPORT_EMAIL` fill in 
 
 The app is installable (PWA): `public/manifest.webmanifest`, icons in `public/icons/`, and `public/sw.js`, which caches only the app's static files and never Supabase responses. `/app` is served with a strict Content-Security-Policy (see `vercel.json`).
 
+## Phone apps (iPhone & Android)
+
+`ios/` and `android/` are Capacitor projects that wrap the same app with native features (reminders, haptics, share sheet, launch screen, back button, sign-in links that open the app).
+
+- Name and permanent app ID: `app.config.json`, then `npm run native:sync`
+- Cloud builds (no Mac needed): `codemagic.yaml` → TestFlight and Google Play internal testing
+- Step-by-step launch guide, store listing text and privacy answers: `docs/APP_STORE_LAUNCH.md`
+- Icons and launch screens are generated from `assets/` with `npx @capacitor/assets generate`
+
 ## Shareable demo
 
 `npm run build:demo` writes `demo/wellness-marketplace-demo.html`, a single self-contained page with sample data that opens on the Market tab. It includes a short "try the whole flow" guide.

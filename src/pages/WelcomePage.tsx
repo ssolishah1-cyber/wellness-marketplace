@@ -7,6 +7,7 @@ import {
 } from "@/lib/nutrition";
 import { SignInPrompt, useProfile } from "@/components/nutrition";
 import { ErrorNote, Field, Spinner, useViewer } from "@/components/ui";
+import { fromDisplayWeight, ftInToCm, useUnits, weightUnit } from "@/lib/units";
 
 const STEPS = ["About you", "Your goal", "Daily targets"];
 
@@ -22,29 +23,34 @@ function Wizard({ firstRun, initialName }: { firstRun: boolean; initialName: str
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: initialName, sex: "" as Sex | "", age: "", height: "", weight: "", goal: "lose" as GoalKind, goalWeight: "", activity: "light" as Activity });
+  const units = useUnits();
+  const U = weightUnit(units);
+  const [f, setF] = useState({ name: initialName, sex: "" as Sex | "", age: "", height: "", heightFt: "", heightIn: "", weight: "", goal: "lose" as GoalKind, goalWeight: "", activity: "light" as Activity });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const num = (s: string) => Number(s.replace(",", "."));
 
-  const step1Ok = f.sex !== "" && num(f.age) >= 18 && num(f.age) <= 100 && num(f.height) >= 120 && num(f.height) <= 230 && num(f.weight) >= 30 && num(f.weight) <= 300;
-  const gw = num(f.goalWeight);
-  const step2Ok = f.goal === "maintain" || (gw >= 30 && gw <= 300 && (f.goal === "lose" ? gw < num(f.weight) : gw > num(f.weight)));
+  // Everything below works in kg / cm; inputs are in the user's units.
+  const heightCm = units === "imperial" ? (f.heightFt === "" ? NaN : ftInToCm(num(f.heightFt), f.heightIn === "" ? 0 : num(f.heightIn))) : num(f.height);
+  const weightKg = f.weight === "" ? NaN : fromDisplayWeight(num(f.weight), units);
+  const gw = f.goalWeight === "" ? NaN : fromDisplayWeight(num(f.goalWeight), units);
+  const step1Ok = f.sex !== "" && num(f.age) >= 18 && num(f.age) <= 100 && heightCm >= 120 && heightCm <= 230 && weightKg >= 30 && weightKg <= 300;
+  const step2Ok = f.goal === "maintain" || (gw >= 30 && gw <= 300 && (f.goal === "lose" ? gw < weightKg : gw > weightKg));
 
   const suggested = useMemo<Targets | null>(() => (step1Ok ? suggestTargets({
-    sex: f.sex as Sex, age: num(f.age), heightCm: num(f.height), weightKg: num(f.weight), activity: f.activity, goal: f.goal,
-  }) : null), [step1Ok, f.sex, f.age, f.height, f.weight, f.activity, f.goal]);
+    sex: f.sex as Sex, age: num(f.age), heightCm, weightKg, activity: f.activity, goal: f.goal,
+  }) : null), [step1Ok, f.sex, f.age, heightCm, weightKg, f.activity, f.goal]);
   const [targets, setTargets] = useState<Record<keyof Targets, string> | null>(null);
   const t = targets ?? (suggested ? Object.fromEntries(Object.entries(suggested).map(([k, v]) => [k, String(v)])) as Record<keyof Targets, string> : null);
 
   const finish = useMutation({
     mutationFn: async (skip: boolean) => {
       if (!skip && t) {
-        await nutrition.logWeight(isoDay(), num(f.weight));
+        await nutrition.logWeight(isoDay(), weightKg);
         return nutrition.updateProfile({
           display_name: f.name.trim() || null,
           kcal_goal: Number(t.kcal_goal), protein_goal_g: Number(t.protein_goal_g), carbs_goal_g: Number(t.carbs_goal_g),
           fat_goal_g: Number(t.fat_goal_g), water_goal_glasses: Number(t.water_goal_glasses),
-          start_weight_kg: num(f.weight), goal_weight_kg: f.goal === "maintain" ? num(f.weight) : gw,
+          start_weight_kg: weightKg, goal_weight_kg: f.goal === "maintain" ? weightKg : gw,
           onboarded_at: new Date().toISOString(),
         });
       }
@@ -83,10 +89,17 @@ function Wizard({ firstRun, initialName }: { firstRun: boolean; initialName: str
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Field label="Age"><input id="w-age" className="input num" type="number" inputMode="numeric" min={18} max={100} value={f.age} onChange={(e) => set("age", e.target.value)} /></Field>
-              <Field label="Height (cm)"><input id="w-height" className="input num" type="number" inputMode="numeric" min={120} max={230} value={f.height} onChange={(e) => set("height", e.target.value)} /></Field>
-              <Field label="Weight (kg)"><input id="w-weight" className="input num" type="number" inputMode="decimal" step="0.1" min={30} max={300} value={f.weight} onChange={(e) => set("weight", e.target.value)} /></Field>
+              <Field label={`Weight (${U})`}><input id="w-weight" className="input num" type="number" inputMode="decimal" step="0.1" value={f.weight} onChange={(e) => set("weight", e.target.value)} /></Field>
+              {units === "imperial" ? (
+                <div className="col-span-2 grid grid-cols-2 gap-3">
+                  <Field label="Height (ft)"><input id="w-height-ft" className="input num" type="number" inputMode="numeric" min={4} max={7} value={f.heightFt} onChange={(e) => set("heightFt", e.target.value)} /></Field>
+                  <Field label="Height (in)"><input id="w-height-in" className="input num" type="number" inputMode="numeric" min={0} max={11} value={f.heightIn} onChange={(e) => set("heightIn", e.target.value)} /></Field>
+                </div>
+              ) : (
+                <Field label="Height (cm)"><input id="w-height" className="input num" type="number" inputMode="numeric" min={120} max={230} value={f.height} onChange={(e) => set("height", e.target.value)} /></Field>
+              )}
             </div>
             {f.age !== "" && num(f.age) < 18 && <p className="rounded-xl bg-citrus-50 p-3 text-sm text-citrus-600">This app is for adults 18 and over.</p>}
           </>
@@ -103,8 +116,8 @@ function Wizard({ firstRun, initialName }: { firstRun: boolean; initialName: str
               </div>
             </div>
             {f.goal !== "maintain" && (
-              <Field label="Goal weight (kg)" hint={`You're at ${f.weight} kg now.`}>
-                <input id="w-goal" className="input num" type="number" inputMode="decimal" step="0.1" min={30} max={300} value={f.goalWeight} onChange={(e) => set("goalWeight", e.target.value)} />
+              <Field label={`Goal weight (${U})`} hint={`You're at ${f.weight} ${U} now.`}>
+                <input id="w-goal" className="input num" type="number" inputMode="decimal" step="0.1" value={f.goalWeight} onChange={(e) => set("goalWeight", e.target.value)} />
               </Field>
             )}
             {f.goal !== "maintain" && f.goalWeight !== "" && !step2Ok && (

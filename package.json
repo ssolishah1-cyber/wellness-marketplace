@@ -13,9 +13,24 @@
     "build:demo": "node scripts/build-demo.mjs",
     "e2e:nutrition": "node tests/e2e-nutrition.mjs",
     "build:site": "node scripts/build-site.mjs",
-    "e2e:launch": "node tests/e2e-launch.mjs"
+    "e2e:launch": "node tests/e2e-launch.mjs",
+    "build:native": "vite build --mode native --base / --outDir dist-native --emptyOutDir",
+    "native:sync": "npm run native:config && npm run build:native && npx cap sync",
+    "native:config": "node scripts/native-config.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-query": "^5.59.0",
     "lucide-react": "^0.460.0",
@@ -24,6 +39,7 @@
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

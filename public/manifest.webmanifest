@@ -1,6 +1,6 @@
 {
-  "name": "Nutrition App",
-  "short_name": "Nutrition",
+  "name": "Wellness Jumpstart",
+  "short_name": "Jumpstart",
   "description": "Track meals, water and progress, and find reviewed wellness partners.",
   "start_url": "./",
   "scope": "./",

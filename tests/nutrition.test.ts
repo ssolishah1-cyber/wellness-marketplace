@@ -109,3 +109,17 @@ describe("account data (demo store)", () => {
     expect(await n.getProfile()).toBeNull(); // signed out
   });
 });
+
+import { cmToFtIn, fromDisplayWeight, ftInToCm, toDisplayWeight } from "@/lib/units";
+describe("units", () => {
+  it("converts weight both ways without drift", () => {
+    expect(toDisplayWeight(81.7, "imperial")).toBe(180.1);
+    expect(fromDisplayWeight(180.1, "imperial")).toBe(81.7);
+    expect(toDisplayWeight(81.7, "metric")).toBe(81.7);
+    for (const kg of [45.3, 60, 81.7, 120.4]) expect(fromDisplayWeight(toDisplayWeight(kg, "imperial"), "imperial")).toBeCloseTo(kg, 1);
+  });
+  it("converts height", () => {
+    expect(ftInToCm(5, 6)).toBe(168);
+    expect(cmToFtIn(168)).toEqual({ ft: 5, in: 6 });
+  });
+});
