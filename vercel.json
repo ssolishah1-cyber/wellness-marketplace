@@ -10,7 +10,7 @@
     { "source": "/demo", "destination": "/preview/demo", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/app/:path*", "destination": "/app/index.html" }
+    { "source": "/app/:path*", "destination": "/app" }
   ],
   "headers": [
     {
