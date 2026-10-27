@@ -25,7 +25,7 @@ If no Supabase keys are set, the app runs in **demo mode** with sample data. Use
 
 To use a real Supabase project:
 
-1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql` and `004_lock_down_functions.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
+1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, `004_lock_down_functions.sql` and `005_onboarding_and_account_deletion.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
 2. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 3. Make yourself an admin:
    `insert into user_roles (user_id, role) values ('<your auth user id>', 'admin');`
@@ -48,11 +48,16 @@ Then go to Dashboard → Database → Webhooks and add a webhook on **INSERT** i
 
 | Path | What |
 |---|---|
-| `/` | Approval mockup (`deploy/index.html`) |
-| `/demo` | One-file Market demo (`deploy/demo/`) |
+| `/` | Redirects to `/app` |
+| `/preview` | Approval mockup (`deploy/index.html`), not indexed |
+| `/preview/demo` | One-file Market demo (`deploy/demo/`) |
 | `/app` | The full app. Demo mode until the Supabase URL and public key are added in Vercel → Settings → Environment Variables as `SUPABASE_URL` + `SUPABASE_ANON_KEY` (or the `VITE_`/`NEXT_PUBLIC_` versions), then redeploy. A secret or service_role key in that slot stops the build. |
 
-In Supabase → Authentication → URL Configuration, set the Site URL to `https://<your-site>/app` so sign-up confirmation links return to the app.
+In Supabase → Authentication → URL Configuration, set the Site URL to `https://<your-site>/app` and add `https://<your-site>/app/**` to Redirect URLs, so sign-up and password-reset links return to the app.
+
+Optional Vercel variables: `VITE_COMPANY_NAME` and `VITE_SUPPORT_EMAIL` fill in the Privacy Policy and Terms; set `VITE_LEGAL_APPROVED=true` once a lawyer has approved them to remove the draft banner.
+
+The app is installable (PWA): `public/manifest.webmanifest`, icons in `public/icons/`, and `public/sw.js`, which caches only the app's static files and never Supabase responses. `/app` is served with a strict Content-Security-Policy (see `vercel.json`).
 
 ## Shareable demo
 
@@ -65,6 +70,8 @@ npm test                     # unit tests: link tagging + marketplace rules
 npm run build && npx vite preview --port 4173 &
 npm run e2e                  # browser test of the full vendor → admin → user flow
 npm run e2e:nutrition        # browser test of Home, Meals, Progress, Profile
+npm run build:site            # then serve dist-site and run:
+npm run e2e:launch           # setup wizard, legal pages, data download/delete, PWA, sign-in screens
 ```
 
 ## Adding it to the Lovable nutrition app

@@ -1,4 +1,4 @@
-import { getDemoUserId } from "../demoApi";
+import { getDemoUserId, setDemoPersona } from "../demoApi";
 import { addDays, isoDay, totalsByDay } from "./logic";
 import type { FoodEntry, MealSlot, NutritionApi, Profile, WeightLog } from "./types";
 
@@ -38,7 +38,7 @@ function seed(userId: string): Store {
     profile: {
       user_id: userId, display_name: userId === "user-member" ? "Jordan" : userId === "user-vendor" ? "Maya" : "Alex",
       kcal_goal: 2100, protein_goal_g: 140, carbs_goal_g: 230, fat_goal_g: 70, water_goal_glasses: 8,
-      start_weight_kg: 84.6, goal_weight_kg: 78.6, weekly_email: true, created_at: addDays(today, -56) + "T08:00:00Z",
+      start_weight_kg: 84.6, goal_weight_kg: 78.6, weekly_email: true, onboarded_at: addDays(today, -56) + "T08:00:00Z", created_at: addDays(today, -56) + "T08:00:00Z",
     },
     food,
     water: { [today]: 5 },
@@ -69,6 +69,16 @@ export const demoNutrition: NutritionApi = {
   getWater: async (day) => delay(store().water[day] ?? 0),
   setWater: async (day, n) => { const s = store(); s.water[day] = Math.max(0, Math.min(30, n)); return delay(s.water[day]); },
   listWeights: async () => delay([...store().weights].sort((a, b) => a.measured_on.localeCompare(b.measured_on))),
+  exportData: async () => {
+    const s = store();
+    return delay({ exported_at: new Date().toISOString(), account: { email: `${getDemoUserId()}@demo` }, profile: s.profile, food_log: s.food, water: s.water, weight: s.weights });
+  },
+  deleteAccount: async () => {
+    const id = getDemoUserId();
+    if (!id) throw new Error("Please sign in first.");
+    stores.delete(id);
+    setDemoPersona("visitor");
+  },
   logWeight: async (day, kg) => {
     if (kg < 25 || kg > 400) throw new Error("Enter a weight between 25 and 400 kg.");
     const s = store();

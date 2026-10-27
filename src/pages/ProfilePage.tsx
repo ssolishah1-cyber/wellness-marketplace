@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LogOut, MessageCircle, Shield, Store } from "lucide-react";
+import { Download, FileText, LogOut, MessageCircle, Shield, SlidersHorizontal, Store, Trash2 } from "lucide-react";
+import { appUrl } from "@/lib/appUrl";
 import { api } from "@/lib/api";
 import { nutrition, type Profile, type ProfilePatch } from "@/lib/nutrition";
 import { useProfile } from "@/components/nutrition";
@@ -54,7 +55,10 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
 
       <section className="card animate-rise p-4 [animation-delay:50ms]">
         <div className="flex items-center justify-between"><h2 className="text-base font-bold">Goals</h2>
-          {!editing && <button className="text-sm font-semibold text-brand-700" onClick={() => setEditing(true)}>Edit</button>}</div>
+          {!editing && <span className="flex gap-3">
+            <Link to="/welcome" className="flex items-center gap-1 text-sm font-semibold text-brand-700"><SlidersHorizontal className="h-3.5 w-3.5" /> Recalculate</Link>
+            <button className="text-sm font-semibold text-brand-700" onClick={() => setEditing(true)}>Edit</button>
+          </span>}</div>
         {editing ? <GoalsForm profile={p} saving={save.isPending} onSave={(patch) => save.mutate(patch)} onCancel={() => setEditing(false)} /> : (
           <dl className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
             <Goal k="Calories" v={`${p.kcal_goal.toLocaleString()} kcal`} />
@@ -98,10 +102,60 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
       <section className="card grid animate-rise gap-1 p-2 [animation-delay:200ms]">
         <Link to="/market/vendor" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><Store className="h-5 w-5 text-brand-700" /><span className="flex-1"><b className="block text-sm">Advertise your business</b><span className="text-xs text-ink-muted">Apply to list in the Market</span></span></Link>
         {isStaff && <Link to="/admin/marketplace" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><Shield className="h-5 w-5 text-brand-700" /><span className="flex-1"><b className="block text-sm">Review console</b><span className="text-xs text-ink-muted">Approve listings and vendors</span></span></Link>}
+        <Link to="/privacy" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Privacy Policy</b></Link>
+        <Link to="/terms" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Terms of Use</b></Link>
         {!isDemoMode && <div className="p-1.5"><SignOut /></div>}
       </section>
+
+      <YourData email={email} />
       {isDemoMode && <p className="text-center text-xs text-ink-muted">Demo mode: switch roles using the bar at the top of the page.</p>}
     </div>
+  );
+}
+
+function YourData({ email }: { email: string | null }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [confirming, setConfirming] = useState(false);
+  const [typed, setTyped] = useState("");
+  const download = useMutation({
+    mutationFn: () => nutrition.exportData(),
+    onSuccess: (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `my-nutrition-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast("Your data file is downloading");
+    },
+  });
+  const remove = useMutation({
+    mutationFn: () => nutrition.deleteAccount(),
+    // resetQueries drops cached personal data and refetches as signed-out.
+    onSuccess: async () => { await qc.resetQueries(); toast("Your account has been deleted"); },
+  });
+  return (
+    <section className="card grid animate-rise gap-3 p-4 [animation-delay:250ms]">
+      <h2 className="text-base font-bold">Your data</h2>
+      <button className="btn-outline justify-start" disabled={download.isPending} onClick={() => download.mutate()}>
+        <Download className="h-4 w-4" /> {download.isPending ? "Preparing…" : "Download my data"}
+      </button>
+      <ErrorNote error={download.error} />
+      {!confirming ? (
+        <button className="btn-outline justify-start text-rose-700 hover:bg-rose-50" onClick={() => setConfirming(true)}><Trash2 className="h-4 w-4" /> Delete my account</button>
+      ) : (
+        <div className="grid gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3">
+          <p className="text-sm text-rose-900">This permanently deletes <b>{email ?? "your account"}</b> and all your meals, water, weight, goals and questions sent to providers. It can't be undone.</p>
+          <Field label='Type DELETE to confirm'><input id="confirm-delete" className="input" autoComplete="off" value={typed} onChange={(e) => setTyped(e.target.value)} /></Field>
+          <ErrorNote error={remove.error} />
+          <div className="flex gap-2">
+            <button className="btn-danger" disabled={typed.trim() !== "DELETE" || remove.isPending} onClick={() => remove.mutate()}>{remove.isPending ? "Deleting…" : "Delete forever"}</button>
+            <button className="btn-outline" onClick={() => { setConfirming(false); setTyped(""); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -151,14 +205,20 @@ function SignOut() {
 
 function SignInForm() {
   const qc = useQueryClient();
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const [mode, setMode] = useState<"in" | "up" | "forgot">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agree, setAgree] = useState(false);
   const submit = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<"ok" | "check-email" | "reset-sent"> => {
+      if (mode === "forgot") {
+        const { error } = await supabase!.auth.resetPasswordForEmail(email, { redirectTo: appUrl("/reset-password") });
+        if (error) throw error;
+        return "reset-sent";
+      }
       const res = mode === "in"
         ? await supabase!.auth.signInWithPassword({ email, password })
-        : await supabase!.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+        : await supabase!.auth.signUp({ email, password, options: { emailRedirectTo: appUrl("/") } });
       if (res.error) throw res.error;
       return mode === "up" && !res.data.session ? "check-email" : "ok";
     },
@@ -168,15 +228,38 @@ function SignInForm() {
   if (submit.data === "check-email") {
     return <div className="card mx-auto max-w-md p-5 text-sm">Check <b>{email}</b> for a confirmation link, then sign in.</div>;
   }
+  if (submit.data === "reset-sent") {
+    return (
+      <div className="card mx-auto grid max-w-md gap-3 p-5 text-sm">
+        <p>If an account exists for <b>{email}</b>, we've sent a link to reset the password. It expires in an hour.</p>
+        <button className="btn-outline" onClick={() => { submit.reset(); setMode("in"); }}>Back to sign in</button>
+      </div>
+    );
+  }
 
+  const title = mode === "in" ? "Sign in" : mode === "up" ? "Create an account" : "Reset your password";
   return (
     <form className="card mx-auto max-w-md space-y-3 p-5" onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}>
-      <h1 className="text-xl font-bold">{mode === "in" ? "Sign in" : "Create an account"}</h1>
-      <Field label="Email"><input className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
-      <Field label="Password"><input className="input" type="password" minLength={8} required autoComplete={mode === "in" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} /></Field>
+      <h1 className="text-xl font-bold">{title}</h1>
+      {mode === "forgot" && <p className="text-sm text-ink-2">Enter your email and we'll send you a link to choose a new password.</p>}
+      <Field label="Email"><input id="auth-email" className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+      {mode !== "forgot" && (
+        <Field label="Password" hint={mode === "up" ? "At least 8 characters" : undefined}>
+          <input id="auth-password" className="input" type="password" minLength={8} required autoComplete={mode === "in" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+      )}
+      {mode === "in" && <button type="button" className="text-sm font-semibold text-brand-700" onClick={() => { submit.reset(); setMode("forgot"); }}>Forgot password?</button>}
+      {mode === "up" && (
+        <label className="flex items-start gap-2 text-sm text-ink-2">
+          <input id="auth-agree" type="checkbox" className="mt-1" required checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+          <span>I'm 18 or older and agree to the <Link className="font-semibold text-brand-700" to="/terms" target="_blank">Terms</Link> and <Link className="font-semibold text-brand-700" to="/privacy" target="_blank">Privacy Policy</Link>.</span>
+        </label>
+      )}
       <ErrorNote error={submit.error} />
-      <button className="btn-primary w-full" disabled={submit.isPending}>{mode === "in" ? "Sign in" : "Sign up"}</button>
-      <button type="button" className="w-full text-sm text-brand-700" onClick={() => setMode(mode === "in" ? "up" : "in")}>
+      <button className="btn-primary w-full" disabled={submit.isPending || (mode === "up" && !agree)}>
+        {mode === "in" ? "Sign in" : mode === "up" ? "Sign up" : "Send reset link"}
+      </button>
+      <button type="button" className="w-full text-sm text-brand-700" onClick={() => { submit.reset(); setMode(mode === "in" ? "up" : "in"); }}>
         {mode === "in" ? "New here? Create an account" : "Already have an account? Sign in"}
       </button>
     </form>

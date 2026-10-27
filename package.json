@@ -12,7 +12,8 @@
     "e2e": "node tests/e2e.mjs",
     "build:demo": "node scripts/build-demo.mjs",
     "e2e:nutrition": "node tests/e2e-nutrition.mjs",
-    "build:site": "node scripts/build-site.mjs"
+    "build:site": "node scripts/build-site.mjs",
+    "e2e:launch": "node tests/e2e-launch.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

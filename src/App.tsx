@@ -11,6 +11,9 @@ import Placeholder from "@/pages/Placeholder";
 import HomePage from "@/pages/HomePage";
 import MealsPage from "@/pages/MealsPage";
 import ProgressPage from "@/pages/ProgressPage";
+import WelcomePage from "@/pages/WelcomePage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
+import { PrivacyPage, TermsPage } from "@/pages/LegalPage";
 import { ToastProvider } from "@/components/Toast";
 import ProfilePage from "@/pages/ProfilePage";
 
@@ -37,6 +40,10 @@ export default function App() {
             <Route path="/meals" element={<MealsPage />} />
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/welcome" element={<WelcomePage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/market" element={<MarketHome />} />
             <Route path="/market/category/:slug" element={<CategoryPage />} />
             <Route path="/market/brand/:slug" element={<BrandPage />} />

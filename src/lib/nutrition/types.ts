@@ -15,6 +15,7 @@ export interface Profile {
   start_weight_kg: number | null;
   goal_weight_kg: number | null;
   weekly_email: boolean;
+  onboarded_at: string | null;
   created_at: string;
 }
 
@@ -63,4 +64,8 @@ export interface NutritionApi {
   setWater(day: string, glasses: number): Promise<number>;
   listWeights(): Promise<WeightLog[]>;
   logWeight(day: string, kg: number): Promise<WeightLog>;
+  /** Everything stored about the signed-in user, for "Download my data". */
+  exportData(): Promise<Record<string, unknown>>;
+  /** Permanently deletes the account and all personal data, then signs out. */
+  deleteAccount(): Promise<void>;
 }

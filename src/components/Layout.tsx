@@ -1,10 +1,14 @@
 import { useEffect } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Home, Salad, LineChart, ShoppingBag, User, Shield, Store } from "lucide-react";
 import { isDemoMode, supabase } from "@/integrations/supabase/client";
 import { getDemoPersona, onDemoPersonaChange, setDemoPersona, type DemoPersona } from "@/lib/demoApi";
 import { useViewer } from "./ui";
+import { useProfile } from "./nutrition";
+
+// Pages a new user may visit before finishing setup.
+const SETUP_EXEMPT = ["/welcome", "/reset-password", "/privacy", "/terms", "/profile"];
 
 const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || "Nutrition App";
 
@@ -19,6 +23,9 @@ const NAV = [
 export default function Layout() {
   const qc = useQueryClient();
   const { data: viewer } = useViewer();
+  const profile = useProfile();
+  const { pathname } = useLocation();
+  const needsSetup = !!viewer?.userId && !!profile.data && !profile.data.onboarded_at && !SETUP_EXEMPT.includes(pathname);
 
   useEffect(() => {
     if (isDemoMode) return onDemoPersonaChange(() => qc.invalidateQueries());
@@ -29,7 +36,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen pb-20 md:pb-0">
       {isDemoMode && <DemoBar />}
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
           <NavLink to="/" className="flex items-center gap-2 font-bold text-brand-700">
             <Salad className="h-5 w-5" /> {APP_NAME}
@@ -54,7 +61,7 @@ export default function Layout() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-5">
-        <Outlet />
+        {needsSetup ? <Navigate to="/welcome" replace /> : <Outlet />}
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom,0px)] md:hidden">

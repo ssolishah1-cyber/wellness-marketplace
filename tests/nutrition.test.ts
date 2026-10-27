@@ -75,3 +75,37 @@ describe("demo store privacy", () => {
     expect((await n.logWeight("2026-10-26", 80.46)).weight_kg).toBe(80.5);
   });
 });
+
+import { suggestTargets } from "@/lib/nutrition/logic";
+describe("goal suggestions", () => {
+  const base = { sex: "female" as const, age: 35, heightCm: 165, weightKg: 75, activity: "light" as const };
+  it("sets a deficit for weight loss and adds up", () => {
+    const lose = suggestTargets({ ...base, goal: "lose" });
+    const keep = suggestTargets({ ...base, goal: "maintain" });
+    expect(keep.kcal_goal - lose.kcal_goal).toBeGreaterThanOrEqual(490);
+    const fromMacros = lose.protein_goal_g * 4 + lose.carbs_goal_g * 4 + lose.fat_goal_g * 9;
+    expect(Math.abs(fromMacros - lose.kcal_goal)).toBeLessThan(15);
+    expect(lose.kcal_goal % 10).toBe(0);
+  });
+  it("never suggests below a safe floor", () => {
+    const t = suggestTargets({ sex: "female", age: 70, heightCm: 150, weightKg: 45, activity: "sedentary", goal: "lose" });
+    expect(t.kcal_goal).toBeGreaterThanOrEqual(1200);
+    const m = suggestTargets({ sex: "male", age: 70, heightCm: 155, weightKg: 50, activity: "sedentary", goal: "lose" });
+    expect(m.kcal_goal).toBeGreaterThanOrEqual(1500);
+  });
+  it("keeps water within 6–14 glasses", () => {
+    expect(suggestTargets({ ...base, weightKg: 40, goal: "maintain" }).water_goal_glasses).toBe(6);
+    expect(suggestTargets({ ...base, weightKg: 200, goal: "maintain" }).water_goal_glasses).toBe(14);
+  });
+});
+
+describe("account data (demo store)", () => {
+  it("exports the signed-in user's data and deletes the account", async () => {
+    setDemoPersona("member");
+    const data = await n.exportData();
+    expect(data).toHaveProperty("food_log");
+    expect(data).toHaveProperty("weight");
+    await n.deleteAccount();
+    expect(await n.getProfile()).toBeNull(); // signed out
+  });
+});

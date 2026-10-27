@@ -85,3 +85,31 @@ export const QUICK_FOODS: (Omit<FoodEntry, "id" | "created_at" | "eaten_on" | "m
   { name: "Protein berry smoothie", kcal: 280, protein_g: 25, carbs_g: 32, fat_g: 5, icon: "cup" },
   { name: "Apple & almond butter", kcal: 190, protein_g: 5, carbs_g: 24, fat_g: 9, icon: "apple" },
 ];
+
+// ---------- goal suggestions (first-run setup) ----------
+export type Sex = "female" | "male";
+export type Activity = "sedentary" | "light" | "moderate" | "active";
+export type GoalKind = "lose" | "maintain" | "gain";
+export const ACTIVITY_LABEL: Record<Activity, string> = {
+  sedentary: "Mostly sitting", light: "Light (walks, 1–2 workouts a week)", moderate: "Moderate (3–4 workouts a week)", active: "Very active (5+ workouts or a physical job)",
+};
+const ACTIVITY_FACTOR: Record<Activity, number> = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725 };
+
+export interface Targets { kcal_goal: number; protein_goal_g: number; carbs_goal_g: number; fat_goal_g: number; water_goal_glasses: number }
+
+/**
+ * Mifflin-St Jeor estimate. A starting point the user can edit, not medical advice.
+ * Losing: about 500 kcal/day below maintenance, never below a safe floor.
+ */
+export function suggestTargets(i: { sex: Sex; age: number; heightCm: number; weightKg: number; activity: Activity; goal: GoalKind }): Targets {
+  const bmr = 10 * i.weightKg + 6.25 * i.heightCm - 5 * i.age + (i.sex === "male" ? 5 : -161);
+  const tdee = bmr * ACTIVITY_FACTOR[i.activity];
+  const floor = i.sex === "male" ? 1500 : 1200;
+  const raw = i.goal === "lose" ? Math.max(floor, tdee - 500) : i.goal === "gain" ? tdee + 300 : tdee;
+  const kcal = Math.round(raw / 10) * 10;
+  const protein = Math.round(i.weightKg * (i.goal === "maintain" ? 1.4 : 1.8));
+  const fat = Math.round((kcal * 0.3) / 9);
+  const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+  const water = Math.min(14, Math.max(6, Math.round((i.weightKg * 35) / 250)));
+  return { kcal_goal: kcal, protein_goal_g: protein, carbs_goal_g: carbs, fat_goal_g: fat, water_goal_glasses: water };
+}
