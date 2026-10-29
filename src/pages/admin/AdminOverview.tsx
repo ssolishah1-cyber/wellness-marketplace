@@ -53,7 +53,7 @@ export default function AdminOverview({ onOpenQueue }: { onOpenQueue: () => void
       </div>
 
       <p className="flex gap-2 rounded-2xl bg-[#e8eee7] p-4 text-xs text-ink-2">
-        <Lock className="h-4 w-4 shrink-0" /> Admins see totals and account details only. No one, including admins, can open another person's meals, weight, workouts or health focus. Totals under 5 are hidden so no one can be identified.
+        <Lock className="h-4 w-4 shrink-0" /> These are anonymous totals; health-focus totals under 5 are hidden. Admins can open an individual client's full record from Clients &amp; roles to support them, and every view is recorded in the activity log. Reviewers can't see client data.
       </p>
     </div>
   );

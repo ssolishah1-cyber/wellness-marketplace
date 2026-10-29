@@ -9,7 +9,7 @@ A nutrition tracker with a reviewed wellness marketplace:
 - **For you** (on Home): guidance for blood sugar, blood pressure, IBS, focus, and stress & sleep, with meal ideas matched to food preferences (`/health/:id`)
 - **Workouts**: a weekly home or gym plan built on the device from level, days per week, weight goal and health focus (`/workouts`), with photos and same-muscle swaps
 - **Exercise library**: 700+ exercises with photos from the open-source, public-domain [Free Exercise DB](https://github.com/yuhonas/free-exercise-db), filtered and ranked for each person's level, equipment and health focus (`/workouts/library`)
-- **Admin panel** (`/admin`): totals, users & roles with a change log, review queue, listings, vendors, brands, Market analytics. Admins never see anyone's health data
+- **Admin panel** (`/admin`): totals, clients (full record per client, CSV/JSON export, every view logged) & roles, review queue, listings, ads (featured listing, Market banner, category sponsor with views/clicks), vendors, brands, categories, Market analytics
 - **Market**: TriggerMD and XIMMD as labelled sponsored partners, plus approved businesses; vendor portal and admin review console
 
 Nutrition data is private to each user and is never read by the Market.
@@ -29,7 +29,7 @@ If no Supabase keys are set, the app runs in **demo mode** with sample data. Use
 
 To use a real Supabase project:
 
-1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, `004_lock_down_functions.sql`, `005_onboarding_and_account_deletion.sql`, `006_health_profile_and_workouts.sql` and `007_admin_panel.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
+1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, `004_lock_down_functions.sql`, `005_onboarding_and_account_deletion.sql`, `006_health_profile_and_workouts.sql`, `007_admin_panel.sql` and `008_ads_clients_conditions.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
 2. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 3. Make yourself an admin:
    `insert into user_roles (user_id, role) values ('<your auth user id>', 'admin');`
@@ -130,6 +130,7 @@ src/lib/exerciseDb.ts, public/exercises.json  open exercise library (scripts/fet
 supabase/migrations/007_admin_panel.sql   admin totals, user list, roles, audit log
 src/lib/admin.ts, src/pages/admin/        admin panel
 docs/HANDOVER.md, docs/WHITE_LABEL.md, docs/WALKTHROUGH_VIDEO.md  handover, client copies, video outline
+docs/ADMIN_GUIDE.md, docs/EXTENDING.md   running the admin panel and ads; adding features safely
 src/lib/nutrition/                        nutrition data layer (Supabase + demo), coach and date logic
 src/pages/HomePage.tsx, MealsPage.tsx, ProgressPage.tsx, ProfilePage.tsx
 supabase/functions/notify-inquiry/        email to the business when a user asks a question

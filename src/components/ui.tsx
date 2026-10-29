@@ -1,19 +1,20 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  BadgeCheck, BookOpen, Calendar, Dumbbell, Loader2, Package, Scale, ShoppingBag, Stethoscope, type LucideIcon,
+  Apple, Baby, BadgeCheck, BookOpen, Brain, Calendar, Dumbbell, Heart, Leaf, Loader2, Moon, Package, Scale, ShoppingBag, Sparkles, Stethoscope, type LucideIcon,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Category, Listing, ListingStatus } from "@/lib/types";
 import { STATUS_LABEL } from "@/lib/types";
 
-const ICONS: Record<string, LucideIcon> = {
+export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   stethoscope: Stethoscope, package: Package, scale: Scale, dumbbell: Dumbbell,
   "book-open": BookOpen, "badge-check": BadgeCheck, calendar: Calendar,
+  heart: Heart, leaf: Leaf, apple: Apple, sparkles: Sparkles, moon: Moon, baby: Baby, brain: Brain, "shopping-bag": ShoppingBag,
 };
 
 export function CategoryIcon({ name, className }: { name: string | null; className?: string }) {
-  const Icon = (name && ICONS[name]) || ShoppingBag;
+  const Icon = (name && CATEGORY_ICONS[name]) || ShoppingBag;
   return <Icon className={className} />;
 }
 
@@ -65,7 +66,7 @@ export function Thumb({ listing, category, className = "" }: { listing: Listing;
   );
 }
 
-export function ListingCard({ listing, categories }: { listing: Listing; categories?: Category[] }) {
+export function ListingCard({ listing, categories, sponsored }: { listing: Listing; categories?: Category[]; sponsored?: boolean }) {
   const category = categories?.find((c) => c.id === listing.category_id);
   const price = formatPrice(listing);
   return (
@@ -74,7 +75,7 @@ export function ListingCard({ listing, categories }: { listing: Listing; categor
       <div className="flex flex-1 flex-col gap-1 p-3">
         <div className="flex flex-wrap items-center gap-1">
           {category && <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{category.name}</span>}
-          {listing.is_sponsored && <SponsoredBadge />}
+          {(listing.is_sponsored || sponsored) && <SponsoredBadge />}
         </div>
         <h3 className="line-clamp-2 font-semibold leading-snug group-hover:text-brand-700">{listing.title}</h3>
         {listing.summary && <p className="line-clamp-2 text-sm text-slate-600">{listing.summary}</p>}

@@ -92,6 +92,9 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
       <section className="card grid animate-rise gap-3 p-4 [animation-delay:100ms]">
         <h2 className="text-base font-bold">Privacy</h2>
         <div className="flex items-center justify-between gap-3">
+          <div><b className="text-sm">Care team access</b><p className="text-xs text-ink-muted">Our care team can view your logs and health focus to support you. Every view is recorded. <Link className="font-semibold text-brand-700" to="/privacy">Learn more</Link></p></div>
+        </div>
+        <div className="flex items-center justify-between gap-3">
           <div><b className="text-sm">Use my health data in the Market</b><p className="text-xs text-ink-muted">Always off. Your meals, weight, goals and health focus never choose or rank marketplace listings.</p></div>
           <span className="relative h-[26px] w-11 shrink-0 cursor-not-allowed rounded-full bg-[#e8eee7] opacity-70" role="switch" aria-checked="false" aria-disabled="true" aria-label="Locked off"><i className="absolute left-[3px] top-[3px] h-5 w-5 rounded-full bg-white shadow" /></span>
         </div>
@@ -358,7 +361,7 @@ function SignInForm() {
       {mode === "up" && (
         <label className="flex items-start gap-2 text-sm text-ink-2">
           <input id="auth-agree" type="checkbox" className="mt-1" required checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-          <span>I'm 18 or older and agree to the <Link className="font-semibold text-brand-700" to="/terms" target="_blank">Terms</Link> and <Link className="font-semibold text-brand-700" to="/privacy" target="_blank">Privacy Policy</Link>.</span>
+          <span>I'm 18 or older and agree to the <Link className="font-semibold text-brand-700" to="/terms" target="_blank">Terms</Link> and <Link className="font-semibold text-brand-700" to="/privacy" target="_blank">Privacy Policy</Link>, including that our care team can view my logs to support me.</span>
         </label>
       )}
       <ErrorNote error={submit.error} />

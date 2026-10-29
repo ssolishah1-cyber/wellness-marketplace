@@ -41,7 +41,7 @@ Exercise library and photos ─► Free Exercise DB (public domain, pinned versi
 Market listings ─► partner websites (TriggerMD, XIMMD, approved vendors) with utm tags, never personal data
 ```
 
-- **Privacy model:** every person's meals, water, weight, workouts and health focus are readable only by that person (database row-level security). Admins see account details and anonymous totals only, with totals under 5 hidden.
+- **Privacy model:** each person's meals, water, weight, workouts and health focus are readable by that person (database row-level security) and by **admins**, who open a client's record from Admin → Clients & roles. Every admin view is written to the activity log. Reviewers (Market only) can't see client data. Users agree to care-team access at sign-up, and the Privacy Policy explains it. Health data is never used for ads or Market ranking.
 - **Market rules** are enforced in the database: only approved listings are public, vendors can't approve themselves, every status change is logged.
 - **Admin panel** (`/admin`): overview totals, users and roles (with a log of role changes), review queue, listings, vendors, brands, Market analytics.
 
@@ -51,9 +51,11 @@ Market listings ─► partner websites (TriggerMD, XIMMD, approved vendors) wit
 |---|---|
 | `README.md` | Features, running locally, tests, how the rules are enforced |
 | `docs/APP_STORE_LAUNCH.md` | Store accounts, Codemagic builds, listing text, privacy answers, review notes, final checklist |
+| `docs/ADMIN_GUIDE.md` | Using the admin panel: clients, listings, brands, categories, ads, roles |
+| `docs/EXTENDING.md` | How to add features without breaking anything |
 | `docs/WHITE_LABEL.md` | Duplicating the app for another client |
 | `docs/WALKTHROUGH_VIDEO.md` | Outline for the infrastructure walkthrough video |
-| `supabase/migrations/001…007` | Database, in order (`supabase/setup_all.sql` = all of them in one paste) |
+| `supabase/migrations/001…008` | Database, in order (`supabase/setup_all.sql` = all of them in one paste) |
 | `Wellness-Marketplace-Blueprint.pdf` | Original 4-week plan |
 
 ## 6. Routine tasks

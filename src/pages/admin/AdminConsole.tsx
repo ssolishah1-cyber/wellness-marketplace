@@ -10,17 +10,21 @@ import ListingForm from "@/components/ListingForm";
 import ClicksChart from "./ClicksChart";
 import AdminOverview from "./AdminOverview";
 import AdminUsers from "./AdminUsers";
+import AdsTab from "./AdsTab";
+import CategoriesTab from "./CategoriesTab";
 import ImageUpload from "@/components/ImageUpload";
 import { EmptyState, ErrorNote, Field, Spinner, SponsoredBadge, StatusBadge, formatPrice, useCategories, useViewer } from "@/components/ui";
 
-type Tab = "overview" | "users" | "queue" | "listings" | "vendors" | "brands" | "analytics";
+type Tab = "overview" | "users" | "queue" | "listings" | "ads" | "vendors" | "brands" | "categories" | "analytics";
 const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "overview", label: "Overview", adminOnly: true },
-  { id: "users", label: "Users & roles", adminOnly: true },
+  { id: "users", label: "Clients & roles", adminOnly: true },
   { id: "queue", label: "Review queue" },
   { id: "listings", label: "All listings" },
+  { id: "ads", label: "Ads" },
   { id: "vendors", label: "Vendors" },
   { id: "brands", label: "Brands" },
+  { id: "categories", label: "Categories" },
   { id: "analytics", label: "Market analytics" },
 ];
 
@@ -47,8 +51,10 @@ export default function AdminConsole({ start }: { start?: Tab }) {
       {tab === "users" && viewer.userId && <AdminUsers myId={viewer.userId} />}
       {tab === "queue" && <ListingsTab status="pending_review" />}
       {tab === "listings" && <ListingsTab />}
+      {tab === "ads" && <AdsTab />}
       {tab === "vendors" && <VendorsTab />}
       {tab === "brands" && <BrandsTab />}
+      {tab === "categories" && <CategoriesTab />}
       {tab === "analytics" && <AnalyticsTab />}
     </div>
   );
@@ -289,14 +295,16 @@ function VendorsTab() {
 function BrandsTab() {
   const qc = useQueryClient();
   const brands = useQuery({ queryKey: ["brands"], queryFn: () => api.listBrands() });
-  const [editing, setEditing] = useState<Brand | null>(null);
+  const [editing, setEditing] = useState<Brand | "new" | null>(null);
   const toggle = useMutation({
     mutationFn: (b: Brand) => api.updateBrand(b.id, { is_featured: !b.is_featured }),
     onSuccess: () => qc.invalidateQueries(),
   });
   if (brands.isLoading) return <Spinner />;
-  if (editing) return <BrandForm brand={editing} onDone={() => { setEditing(null); qc.invalidateQueries(); }} />;
+  if (editing) return <BrandForm brand={editing === "new" ? null : editing} onDone={() => { setEditing(null); qc.invalidateQueries(); }} />;
   return (
+    <div className="space-y-3">
+    <button className="btn-primary" onClick={() => setEditing("new")}><Plus className="h-4 w-4" /> New brand</button>
     <div className="card divide-y divide-slate-100">
       {brands.data?.map((b) => (
         <div key={b.id} className="flex items-center gap-3 p-3">
@@ -313,22 +321,36 @@ function BrandsTab() {
         </div>
       ))}
     </div>
+    </div>
   );
 }
 
-function BrandForm({ brand, onDone }: { brand: Brand; onDone: () => void }) {
+function BrandForm({ brand, onDone }: { brand: Brand | null; onDone: () => void }) {
+  const [name, setName] = useState("");
+  const [owned, setOwned] = useState(false);
   const [f, setF] = useState({
-    tagline: brand.tagline ?? "", description: brand.description ?? "", logo_url: brand.logo_url ?? "",
-    website_url: brand.website_url ?? "", affiliation_disclosure: brand.affiliation_disclosure ?? "",
+    tagline: brand?.tagline ?? "", description: brand?.description ?? "", logo_url: brand?.logo_url ?? "",
+    website_url: brand?.website_url ?? "", affiliation_disclosure: brand?.affiliation_disclosure ?? "",
   });
   const bind = (k: keyof typeof f) => ({ value: f[k], onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value }) });
   const save = useMutation({
-    mutationFn: () => api.updateBrand(brand.id, Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() || null]))),
+    mutationFn: async () => {
+      const fields = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() || null]));
+      if (brand) return api.updateBrand(brand.id, fields);
+      if (owned && !fields.affiliation_disclosure) throw new Error("Affiliated brands need a disclosure, e.g. \"This brand is affiliated with the owner of this app.\"");
+      await api.createBrand({ ...fields, name: name.trim(), is_owned_brand: owned });
+    },
     onSuccess: onDone,
   });
   return (
     <form className="card space-y-3 p-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
-      <h2 className="font-semibold">Edit {brand.name}</h2>
+      <h2 className="font-semibold">{brand ? `Edit ${brand.name}` : "New brand"}</h2>
+      {!brand && (
+        <>
+          <Field label="Brand name"><input id="brand-name" className="input" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={owned} onChange={(e) => setOwned(e.target.checked)} /> Affiliated with the app owner (shows an "Affiliated" label)</label>
+        </>
+      )}
       <Field label="Tagline"><input className="input" {...bind("tagline")} /></Field>
       <Field label="Description"><textarea className="input" rows={4} {...bind("description")} /></Field>
       <div className="grid gap-3 sm:grid-cols-2">

@@ -9,7 +9,7 @@ import type { FoodEntry } from "@/lib/nutrition/types";
 const entry = (name: string, meal: FoodEntry["meal"], carbs = 0, kcal = 400, created_at = "2026-10-27T09:00:00"): FoodEntry =>
   ({ id: name, eaten_on: "2026-10-27", meal, name, kcal, protein_g: 20, carbs_g: carbs, fat_g: 10, created_at });
 const ctx = (entries: FoodEntry[], hour = 12, water = 4) =>
-  ({ entries, macros: { kcal: entries.reduce((a, e) => a + e.kcal, 0), protein_g: 0, carbs_g: entries.reduce((a, e) => a + e.carbs_g, 0), fat_g: 0 }, profile: { carbs_goal_g: 200, water_goal_glasses: 8 }, water, hour });
+  ({ entries, macros: { kcal: entries.reduce((a, e) => a + e.kcal, 0), protein_g: 0, carbs_g: entries.reduce((a, e) => a + e.carbs_g, 0), fat_g: 0 }, profile: { kcal_goal: 2000, protein_goal_g: 120, carbs_goal_g: 200, water_goal_glasses: 8 }, water, hour });
 
 describe("meal ideas", () => {
   it("have calories that match their macros", () => {
@@ -54,6 +54,21 @@ describe("condition insights", () => {
   });
   it("catches late caffeine for sleep", () => {
     expect(conditionInsight("relaxation", ctx([entry("Iced latte", "snack", 20, 150, "2026-10-27T16:30:00")], 17)).text).toMatch(/Caffeine/);
+  });
+  it("tracks the weight-loss calorie gap and protein", () => {
+    expect(conditionInsight("weight_loss", ctx([entry("Big lunch", "lunch", 0, 2300)])).text).toMatch(/over today/);
+    expect(conditionInsight("weight_loss", ctx([entry("Lunch", "lunch", 0, 600)])).tone).toBe("tip");
+  });
+  it("flags saturated fat for heart health and praises fiber", () => {
+    expect(conditionInsight("heart_health", ctx([entry("Bacon sandwich", "breakfast")])).text).toMatch(/Bacon/);
+    expect(conditionInsight("heart_health", ctx([entry("Overnight oats", "breakfast")])).tone).toBe("good");
+  });
+  it("gives general wellness tips", () => {
+    expect(conditionInsight("general_wellness", ctx([entry("Salad", "lunch"), entry("Lentil soup", "dinner")], 12, 6)).tone).toBe("good");
+  });
+  it("has a guide, icon and sources for all 8 options", () => {
+    expect(CONDITIONS.map((c) => c.id).sort()).toEqual(["diabetes", "focus", "general_wellness", "heart_health", "hypertension", "ibs", "relaxation", "weight_loss"]);
+    for (const c of CONDITIONS) { expect(c.eatMore.length).toBeGreaterThan(2); expect(c.sources.length).toBeGreaterThan(0); }
   });
   it("praises a protein breakfast for focus", () => {
     expect(conditionInsight("focus", ctx([entry("Eggs", "breakfast")], 10)).tone).toBe("good");
@@ -173,7 +188,7 @@ describe("admin panel (demo)", () => {
     expect(s.signups_by_day).toHaveLength(30);
     const users = await admin.listUsers("jamie");
     expect(users).toHaveLength(1);
-    expect(Object.keys(users[0])).not.toContain("conditions");
+    expect(users[0]).toMatchObject({ display_name: "Jamie", conditions: ["weight_loss"] });
     await admin.setRole(users[0].user_id, "reviewer", true);
     expect((await admin.listUsers("jamie"))[0].roles).toEqual(["reviewer"]);
     await expect(admin.setRole("user-admin", "admin", false)).rejects.toThrow(/own admin/);

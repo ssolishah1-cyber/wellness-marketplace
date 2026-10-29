@@ -1,4 +1,4 @@
-import type { Brand, Category, ClickRow, Listing, Review, Vendor } from "./types";
+import type { Ad, AdStat, Brand, Category, ClickRow, Listing, Review, Vendor } from "./types";
 
 // Sample data for demo mode only. Brand copy is placeholder text and must be
 // replaced with verified descriptions, prices and evidence before launch.
@@ -140,3 +140,23 @@ export const demoClicks: ClickRow[] = demoListings
       listing_id: l.id, day: dayStr(6 - d), source: "market", click_count: ((i + 2) * (d + 3)) % 17 + 2,
     })),
   );
+
+// Sample ads. Real ads are created by staff in Admin → Ads.
+const bannerSvg = (from: string, to: string) =>
+  "data:image/svg+xml;utf8," + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs><rect width="1200" height="500" fill="url(#g)"/><circle cx="1020" cy="120" r="220" fill="#ffffff" opacity=".12"/><circle cx="1120" cy="430" r="140" fill="#ffffff" opacity=".1"/></svg>`);
+
+const adBase = { body: null, image_url: null, listing_id: null, brand_id: null, category_id: null, link_url: null, vendor_id: null,
+  starts_at: dayStr(10) + "T00:00:00Z", ends_at: null, is_active: true, priority: 0, price_cents: null, payment_status: "complimentary" as const, notes: null, created_at: dayStr(10) + "T00:00:00Z" };
+
+export const demoAds: Ad[] = [
+  { ...adBase, id: "ad-tmd-banner", kind: "home_banner", title: "See a clinician from home", body: "Virtual consultations with licensed clinicians. Sample banner.",
+    image_url: bannerSvg("#1f62a0", "#13603a"), brand_id: "brand-triggermd", advertiser: "TriggerMD", priority: 10 },
+  { ...adBase, id: "ad-gp-featured", kind: "featured_listing", title: "12-week nutrition coaching", listing_id: "l-gp-coaching",
+    advertiser: "GreenPlate Coaching", vendor_id: "vendor-greenplate", price_cents: 15000, payment_status: "paid" },
+  { ...adBase, id: "ad-fitness-sponsor", kind: "category_sponsor", title: "Train at home, no gym needed", body: "Sample category sponsor.",
+    listing_id: "l-fit-app", category_id: "cat-fitness", advertiser: "Sample fitness partner" },
+];
+
+export const demoAdStats: AdStat[] = demoAds.flatMap((a, i) =>
+  Array.from({ length: 7 }, (_, d) => ({ ad_id: a.id, day: dayStr(6 - d), views: 40 + ((i + 3) * (d + 5)) % 37, clicks: 2 + ((i + 1) * (d + 2)) % 7 })));

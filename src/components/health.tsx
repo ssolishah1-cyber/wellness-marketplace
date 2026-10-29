@@ -1,17 +1,20 @@
 import { useMutation } from "@tanstack/react-query";
-import { Brain, Check, Droplet, HeartPulse, Leaf, Lock, Moon, Plus, type LucideIcon } from "lucide-react";
+import { Brain, Check, Droplet, Heart, HeartPulse, Leaf, Lock, Moon, Plus, Scale, Sun, type LucideIcon } from "lucide-react";
 import { CONDITIONS, FOOD_PREF_LABEL, MEAL_LABEL, nutrition, type ConditionGuide, type ConditionId, type FitnessLevel, type FoodPref, type MealIdea, type WorkoutPlace } from "@/lib/nutrition";
 import { FoodBadge, useRefreshFood } from "./nutrition";
 import { tap } from "@/lib/native";
 import { LEVEL_LABEL, PLACE_LABEL } from "@/lib/fitness";
 
-const ICONS: Record<ConditionGuide["icon"], LucideIcon> = { droplet: Droplet, heart: HeartPulse, leaf: Leaf, brain: Brain, moon: Moon };
+const ICONS: Record<ConditionGuide["icon"], LucideIcon> = { droplet: Droplet, heart: HeartPulse, leaf: Leaf, brain: Brain, moon: Moon, scale: Scale, "heart-outline": Heart, sun: Sun };
 export const TINTS: Record<ConditionId, string> = {
   diabetes: "from-sky-500 to-indigo-700",
   hypertension: "from-rose-500 to-rose-700",
   ibs: "from-brand-500 to-brand-700",
   focus: "from-citrus-500 to-amber-600",
   relaxation: "from-violet-400 to-violet-700",
+  weight_loss: "from-teal-400 to-teal-700",
+  heart_health: "from-rose-400 to-pink-700",
+  general_wellness: "from-amber-400 to-citrus-600",
 };
 
 export function ConditionIcon({ guide, size = 40 }: { guide: ConditionGuide; size?: number }) {
@@ -22,7 +25,7 @@ export function ConditionIcon({ guide, size = 40 }: { guide: ConditionGuide; siz
 const chip = (on: boolean) => `rounded-2xl border p-3 text-left text-sm transition ${on ? "border-brand-600 bg-brand-50 ring-2 ring-brand-100" : "border-[#d8e2d9] bg-white hover:border-brand-500"}`;
 const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
-export const HEALTH_CONSENT_TEXT = "Save my health focus to my account so the app can tailor tips, meal ideas and workouts. It stays private to me, is never shared with businesses or used for ads, and I can remove it at any time.";
+export const HEALTH_CONSENT_TEXT = "Save my health focus to my account so the app can tailor tips, meal ideas and workouts. Our care team can also see it to support me. It is never shared with businesses or used for ads, and I can remove it at any time.";
 
 export function ConditionPicker({ value, onChange, consent, onConsent }: { value: ConditionId[]; onChange: (v: ConditionId[]) => void; consent: boolean; onConsent: (v: boolean) => void }) {
   return (

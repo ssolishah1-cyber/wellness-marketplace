@@ -24,8 +24,8 @@ textarea { width:100%; box-sizing:border-box; min-height:360px; font-family:var(
 </style>
 <main>
   <div>
-    <h1>Supabase update: admin panel</h1>
-    <p class="lead">Adds the admin dashboard totals, user list, role management and a log of role changes. Admins never see anyone&#x27;s health data. Safe to run more than once.</p>
+    <h1>Supabase update: ads, client view &amp; new health options</h1>
+    <p class="lead">Adds Market ads with view and click counts, the admin client view (every view logged), and the weight loss, heart health and general wellness options. Safe to run more than once.</p>
   </div>
   <section class="panel">
     <div class="actions">
@@ -39,104 +39,165 @@ textarea { width:100%; box-sizing:border-box; min-height:360px; font-family:var(
       <li>Delete anything already in the editor, paste, and click <b>Run</b>. It should finish with “Success. No rows returned”.</li>
     </ol>
   </section>
-  <label for="sql" class="meta">Script · 97 lines · migration 007</label>
+  <label for="sql" class="meta">Script · 158 lines · migration 008</label>
   <textarea id="sql" readonly spellcheck="false">-- =====================================================================
--- Admin panel: app statistics, user list and role management.
--- Run after 006.
+-- Market ads, admin client view, and three more health focus options.
+-- Run after 007.
 --
--- Admins see account details (email, sign-up and last sign-in dates,
--- roles) and anonymous totals. They never see anyone&#x27;s meals, weight,
--- workouts or health focus. Health-focus totals under 5 are hidden so no
--- one can be singled out.
+-- Client data: admins can open an individual client&#x27;s profile, logs and
+-- health focus to support them. Users are told this at sign-up and in the
+-- Privacy Policy, and every view is recorded in admin_audit_log.
+-- Reviewers (Market only) never get client data.
+--
+-- Ads: always labelled Sponsored in the app, placed by staff, and never
+-- targeted with health data (placement and category only).
 -- =====================================================================
 
-create table if not exists public.admin_audit_log (
-  id bigint generated always as identity primary key,
-  actor_id uuid references auth.users(id) on delete set null,
-  action text not null,
-  target_user_id uuid references auth.users(id) on delete set null,
-  details jsonb not null default &#x27;{}&#x27;,
-  created_at timestamptz not null default now()
+-- ---------- Health focus: weight loss, heart health, general wellness ----------
+alter table public.profiles drop constraint if exists profiles_conditions_known;
+alter table public.profiles add constraint profiles_conditions_known
+  check (conditions &lt;@ array[&#x27;diabetes&#x27;, &#x27;hypertension&#x27;, &#x27;ibs&#x27;, &#x27;focus&#x27;, &#x27;relaxation&#x27;, &#x27;weight_loss&#x27;, &#x27;heart_health&#x27;, &#x27;general_wellness&#x27;]::text[]);
+
+-- ---------- Ads ----------
+do $$ begin
+  create type public.ad_kind as enum (&#x27;featured_listing&#x27;, &#x27;home_banner&#x27;, &#x27;category_sponsor&#x27;);
+exception when duplicate_object then null; end $$;
+
+create table if not exists public.marketplace_ads (
+  id uuid primary key default gen_random_uuid(),
+  kind public.ad_kind not null,
+  title text not null check (char_length(title) between 1 and 80),
+  body text check (char_length(body) &lt;= 160),
+  image_url text check (image_url is null or image_url ~* &#x27;^https?://&#x27;),
+  listing_id uuid references public.marketplace_listings(id) on delete cascade,
+  brand_id uuid references public.marketplace_brands(id) on delete cascade,
+  category_id uuid references public.marketplace_categories(id) on delete cascade,
+  link_url text check (link_url is null or link_url ~* &#x27;^https?://&#x27;),
+  advertiser text not null check (char_length(advertiser) between 1 and 120),
+  vendor_id uuid references public.marketplace_vendors(id) on delete set null,
+  starts_at timestamptz not null default now(),
+  ends_at timestamptz,
+  is_active boolean not null default true,
+  priority int not null default 0,
+  -- Billing (staff only; online checkout can fill these later).
+  price_cents int check (price_cents is null or price_cents &gt;= 0),
+  payment_status text not null default &#x27;unpaid&#x27; check (payment_status in (&#x27;unpaid&#x27;, &#x27;invoiced&#x27;, &#x27;paid&#x27;, &#x27;complimentary&#x27;)),
+  notes text,
+  created_by uuid references auth.users(id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (ends_at is null or ends_at &gt; starts_at),
+  -- Every ad has somewhere to go.
+  check (listing_id is not null or brand_id is not null or link_url is not null),
+  check (kind &lt;&gt; &#x27;featured_listing&#x27; or listing_id is not null),
+  check (kind &lt;&gt; &#x27;category_sponsor&#x27; or category_id is not null),
+  check (kind &lt;&gt; &#x27;home_banner&#x27; or image_url is not null)
 );
-alter table public.admin_audit_log enable row level security;
-drop policy if exists &quot;admins read audit log&quot; on public.admin_audit_log;
-create policy &quot;admins read audit log&quot; on public.admin_audit_log
-  for select to authenticated using (public.has_role(auth.uid(), &#x27;admin&#x27;));
-revoke all on public.admin_audit_log from anon;
--- Rows are written only by the functions below.
-revoke insert, update, delete on public.admin_audit_log from authenticated;
+create index if not exists marketplace_ads_live on public.marketplace_ads (kind, is_active, starts_at, ends_at);
 
-create or replace function public.require_admin()
-returns void language plpgsql stable security definer set search_path = public as $$
+drop trigger if exists trg_ads_updated on public.marketplace_ads;
+create trigger trg_ads_updated before update on public.marketplace_ads
+  for each row execute function public.set_updated_at();
+
+create table if not exists public.marketplace_ad_stats (
+  ad_id uuid not null references public.marketplace_ads(id) on delete cascade,
+  day date not null default current_date,
+  views int not null default 0,
+  clicks int not null default 0,
+  primary key (ad_id, day)
+);
+
+alter table public.marketplace_ads enable row level security;
+alter table public.marketplace_ad_stats enable row level security;
+drop policy if exists &quot;staff manage ads&quot; on public.marketplace_ads;
+create policy &quot;staff manage ads&quot; on public.marketplace_ads for all to authenticated
+  using (public.is_marketplace_staff(auth.uid())) with check (public.is_marketplace_staff(auth.uid()));
+drop policy if exists &quot;staff read ad stats&quot; on public.marketplace_ad_stats;
+create policy &quot;staff read ad stats&quot; on public.marketplace_ad_stats for select to authenticated
+  using (public.is_marketplace_staff(auth.uid()));
+revoke all on public.marketplace_ads, public.marketplace_ad_stats from anon;
+
+-- Live ads for the app: public fields only (no price, payment or notes).
+-- A featured listing only shows while its listing is published.
+drop function if exists public.list_live_ads() cascade;
+create or replace function public.list_live_ads()
+returns table (id uuid, kind public.ad_kind, title text, body text, image_url text, listing_id uuid, listing_slug text, brand_id uuid, brand_slug text, category_id uuid, link_url text, advertiser text, priority int)
+language sql stable security definer set search_path = public as $$
+  select a.id, a.kind, a.title, a.body, a.image_url, a.listing_id, l.slug, a.brand_id, b.slug, a.category_id, a.link_url, a.advertiser, a.priority
+  from public.marketplace_ads a
+  left join public.marketplace_listings l on l.id = a.listing_id
+  left join public.marketplace_brands b on b.id = a.brand_id
+  where a.is_active and a.starts_at &lt;= now() and (a.ends_at is null or a.ends_at &gt; now())
+    and (a.listing_id is null or (l.status = &#x27;published&#x27; and (l.expires_at is null or l.expires_at &gt; now())))
+    and (a.brand_id is null or b.is_active)
+  order by a.priority desc, a.starts_at desc
+$$;
+
+-- Anonymous daily totals only, and only for live ads.
+create or replace function public.record_ad_event(_ad_id uuid, _event text)
+returns void language plpgsql security definer set search_path = public as $$
 begin
-  if not public.has_role(auth.uid(), &#x27;admin&#x27;) then
-    raise exception &#x27;Admins only&#x27; using errcode = &#x27;42501&#x27;;
-  end if;
+  if _event not in (&#x27;view&#x27;, &#x27;click&#x27;) then return; end if;
+  if not exists (select 1 from public.list_live_ads() x where x.id = _ad_id) then return; end if;
+  insert into public.marketplace_ad_stats (ad_id, day, views, clicks)
+  values (_ad_id, current_date, (_event = &#x27;view&#x27;)::int, (_event = &#x27;click&#x27;)::int)
+  on conflict (ad_id, day) do update set
+    views = public.marketplace_ad_stats.views + (_event = &#x27;view&#x27;)::int,
+    clicks = public.marketplace_ad_stats.clicks + (_event = &#x27;click&#x27;)::int;
 end $$;
 
-create or replace function public.admin_app_stats()
-returns jsonb language plpgsql stable security definer set search_path = public, auth as $$
-begin
-  perform public.require_admin();
-  return jsonb_build_object(
-    &#x27;total_users&#x27;,      (select count(*) from auth.users),
-    &#x27;new_users_7d&#x27;,     (select count(*) from auth.users where created_at &gt; now() - interval &#x27;7 days&#x27;),
-    &#x27;new_users_30d&#x27;,    (select count(*) from auth.users where created_at &gt; now() - interval &#x27;30 days&#x27;),
-    &#x27;onboarded&#x27;,        (select count(*) from public.profiles where onboarded_at is not null),
-    &#x27;active_7d&#x27;,        (select count(distinct user_id) from public.food_entries where eaten_on &gt; current_date - 7),
-    &#x27;food_entries_7d&#x27;,  (select count(*) from public.food_entries where eaten_on &gt; current_date - 7),
-    &#x27;workouts_7d&#x27;,      (select count(*) from public.workout_logs where done_on &gt; current_date - 7),
-    &#x27;with_health_focus&#x27;,(select count(*) from public.profiles where cardinality(conditions) &gt; 0),
-    &#x27;condition_counts&#x27;, (select coalesce(jsonb_object_agg(c, case when n &gt;= 5 then n end), &#x27;{}&#x27;::jsonb)
-                           from (select unnest(conditions) c, count(*) n from public.profiles group by 1) x),
-    &#x27;signups_by_day&#x27;,   (select coalesce(jsonb_agg(jsonb_build_object(&#x27;day&#x27;, d, &#x27;n&#x27;, n) order by d), &#x27;[]&#x27;::jsonb)
-                           from (select gs::date d, (select count(*) from auth.users u where u.created_at::date = gs::date) n
-                                 from generate_series(current_date - 29, current_date, interval &#x27;1 day&#x27;) gs) s),
-    &#x27;pending_listings&#x27;, (select count(*) from public.marketplace_listings where status = &#x27;pending_review&#x27;),
-    &#x27;pending_vendors&#x27;,  (select count(*) from public.marketplace_vendors where status = &#x27;pending&#x27;),
-    &#x27;inquiries_7d&#x27;,     (select count(*) from public.marketplace_inquiries where created_at &gt; now() - interval &#x27;7 days&#x27;)
-  );
-end $$;
+grant execute on function public.list_live_ads() to anon, authenticated;
+grant execute on function public.record_ad_event(uuid, text) to anon, authenticated;
 
+-- ---------- Admin: client list with activity, and a full client view ----------
+drop function if exists public.admin_list_users(text, int, int);
 create or replace function public.admin_list_users(_search text default &#x27;&#x27;, _limit int default 50, _offset int default 0)
-returns table (user_id uuid, email text, created_at timestamptz, last_sign_in_at timestamptz, onboarded boolean, roles text[], vendor_status text)
+returns table (user_id uuid, email text, display_name text, created_at timestamptz, last_sign_in_at timestamptz,
+               onboarded boolean, roles text[], vendor_status text, conditions text[], last_logged_on date, logged_days_30 int)
 language plpgsql stable security definer set search_path = public, auth as $$
 begin
   perform public.require_admin();
   return query
-    select u.id, u.email::text, u.created_at, u.last_sign_in_at, p.onboarded_at is not null,
+    select u.id, u.email::text, p.display_name, u.created_at, u.last_sign_in_at, p.onboarded_at is not null,
            array(select r.role::text from public.user_roles r where r.user_id = u.id order by 1),
-           (select v.status::text from public.marketplace_vendors v where v.owner_user_id = u.id order by v.created_at limit 1)
+           (select v.status::text from public.marketplace_vendors v where v.owner_user_id = u.id order by v.created_at limit 1),
+           coalesce(p.conditions, &#x27;{}&#x27;),
+           (select max(f.eaten_on) from public.food_entries f where f.user_id = u.id),
+           (select count(distinct f.eaten_on)::int from public.food_entries f where f.user_id = u.id and f.eaten_on &gt; current_date - 30)
     from auth.users u
     left join public.profiles p on p.user_id = u.id
-    where coalesce(_search, &#x27;&#x27;) = &#x27;&#x27; or u.email ilike &#x27;%&#x27; || replace(replace(_search, &#x27;%&#x27;, &#x27;\%&#x27;), &#x27;_&#x27;, &#x27;\_&#x27;) || &#x27;%&#x27;
+    where coalesce(_search, &#x27;&#x27;) = &#x27;&#x27;
+       or u.email ilike &#x27;%&#x27; || replace(replace(_search, &#x27;%&#x27;, &#x27;\%&#x27;), &#x27;_&#x27;, &#x27;\_&#x27;) || &#x27;%&#x27;
+       or p.display_name ilike &#x27;%&#x27; || replace(replace(_search, &#x27;%&#x27;, &#x27;\%&#x27;), &#x27;_&#x27;, &#x27;\_&#x27;) || &#x27;%&#x27;
     order by u.created_at desc
     limit least(greatest(_limit, 1), 200) offset greatest(_offset, 0);
 end $$;
 
-create or replace function public.admin_set_role(_user_id uuid, _role public.app_role, _grant boolean)
-returns void language plpgsql security definer set search_path = public as $$
+create or replace function public.admin_client_detail(_user_id uuid, _days int default 90)
+returns jsonb language plpgsql security definer set search_path = public, auth as $$
+declare since date := current_date - least(greatest(_days, 1), 365);
 begin
   perform public.require_admin();
-  if _grant then
-    insert into public.user_roles (user_id, role) values (_user_id, _role) on conflict do nothing;
-  else
-    if _role = &#x27;admin&#x27; and _user_id = auth.uid() then
-      raise exception &#x27;You can&#x27;&#x27;t remove your own admin role.&#x27;;
-    end if;
-    delete from public.user_roles where user_id = _user_id and role = _role;
-  end if;
+  if not exists (select 1 from auth.users where id = _user_id) then raise exception &#x27;Client not found&#x27;; end if;
   insert into public.admin_audit_log (actor_id, action, target_user_id, details)
-  values (auth.uid(), case when _grant then &#x27;grant_role&#x27; else &#x27;revoke_role&#x27; end, _user_id, jsonb_build_object(&#x27;role&#x27;, _role));
+  values (auth.uid(), &#x27;view_client&#x27;, _user_id, jsonb_build_object(&#x27;days&#x27;, _days));
+  return jsonb_build_object(
+    &#x27;account&#x27;, (select jsonb_build_object(&#x27;email&#x27;, u.email, &#x27;created_at&#x27;, u.created_at, &#x27;last_sign_in_at&#x27;, u.last_sign_in_at) from auth.users u where u.id = _user_id),
+    &#x27;profile&#x27;, (select to_jsonb(p) from public.profiles p where p.user_id = _user_id),
+    &#x27;food&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;eaten_on&#x27;, f.eaten_on, &#x27;meal&#x27;, f.meal, &#x27;name&#x27;, f.name, &#x27;kcal&#x27;, f.kcal, &#x27;protein_g&#x27;, f.protein_g, &#x27;carbs_g&#x27;, f.carbs_g, &#x27;fat_g&#x27;, f.fat_g) order by f.eaten_on desc, f.created_at desc)
+                      from public.food_entries f where f.user_id = _user_id and f.eaten_on &gt;= since), &#x27;[]&#x27;::jsonb),
+    &#x27;water&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;day&#x27;, w.day, &#x27;glasses&#x27;, w.glasses) order by w.day desc) from public.water_logs w where w.user_id = _user_id and w.day &gt;= since), &#x27;[]&#x27;::jsonb),
+    &#x27;weights&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;measured_on&#x27;, w.measured_on, &#x27;weight_kg&#x27;, w.weight_kg) order by w.measured_on) from public.weight_logs w where w.user_id = _user_id), &#x27;[]&#x27;::jsonb),
+    &#x27;workouts&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;done_on&#x27;, w.done_on, &#x27;session_id&#x27;, w.session_id, &#x27;minutes&#x27;, w.minutes) order by w.done_on desc) from public.workout_logs w where w.user_id = _user_id and w.done_on &gt;= since), &#x27;[]&#x27;::jsonb),
+    &#x27;inquiries&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;created_at&#x27;, q.created_at, &#x27;listing_id&#x27;, q.listing_id, &#x27;message&#x27;, q.message, &#x27;status&#x27;, q.status) order by q.created_at desc) from public.marketplace_inquiries q where q.user_id = _user_id), &#x27;[]&#x27;::jsonb),
+    &#x27;roles&#x27;, (select coalesce(array_agg(r.role::text), &#x27;{}&#x27;) from public.user_roles r where r.user_id = _user_id)
+  );
 end $$;
 
-revoke execute on function public.require_admin() from public, anon, authenticated;
-revoke execute on function public.admin_app_stats() from public, anon;
 revoke execute on function public.admin_list_users(text, int, int) from public, anon;
-revoke execute on function public.admin_set_role(uuid, public.app_role, boolean) from public, anon;
-grant execute on function public.admin_app_stats() to authenticated;
+revoke execute on function public.admin_client_detail(uuid, int) from public, anon;
 grant execute on function public.admin_list_users(text, int, int) to authenticated;
-grant execute on function public.admin_set_role(uuid, public.app_role, boolean) to authenticated;
+grant execute on function public.admin_client_detail(uuid, int) to authenticated;
 </textarea>
 </main>
 <script>

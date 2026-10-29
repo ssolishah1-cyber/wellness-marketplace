@@ -46,7 +46,7 @@ export default function ProgressPage() {
 
   return (
     <div className="mx-auto grid max-w-xl gap-4">
-      <div className="animate-rise"><h1 className="text-[26px] font-extrabold">Progress</h1><p className="text-sm text-ink-muted">Your trends. Only you can see them.</p></div>
+      <div className="animate-rise"><h1 className="text-[26px] font-extrabold">Progress</h1><p className="text-sm text-ink-muted">Your trends at a glance.</p></div>
 
       <section className="grid animate-rise grid-cols-3 gap-2 [animation-delay:50ms]">
         <div className="card p-3"><span className="text-[11px] text-ink-muted">{lost !== null && lost < 0 ? "Gained" : "Lost"}</span><b className="num block font-display text-[22px]">{lost === null ? "—" : Math.abs(lost)}</b><span className="text-[11px] text-ink-muted">{U} since start</span></div>

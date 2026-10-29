@@ -2,7 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { demoApi } from "./demoApi";
 import { supabaseApi } from "./supabaseApi";
 import type {
-  Brand, Category, ClickRow, Inquiry, Listing, ListingInput, ListingStatus, Review, ReviewType, Vendor, VendorStatus, Viewer,
+  Ad, AdInput, AdStat, Brand, BrandInput, Category, CategoryInput, ClickRow, Inquiry, LiveAd, Listing, ListingInput, ListingStatus,
+  Review, ReviewType, Vendor, VendorStatus, Viewer,
 } from "./types";
 
 export interface ListingFilters {
@@ -37,6 +38,9 @@ export interface MarketApi {
   listPublishedListings(filters?: ListingFilters): Promise<Listing[]>;
   getListing(slug: string): Promise<Listing | null>;
   recordClick(listingId: string, source: string): Promise<void>;
+  /** Live ads, public fields only. Ads are chosen by placement, never by anything about the user. */
+  listLiveAds(): Promise<LiveAd[]>;
+  recordAdEvent(adId: string, event: "view" | "click"): Promise<void>;
   sendInquiry(input: InquiryInput): Promise<void>;
 
   // Images: folder is the vendor id for vendors, "brands" or "staff" for staff
@@ -60,6 +64,13 @@ export interface MarketApi {
   setVendorStatus(id: string, status: VendorStatus): Promise<void>;
   updateBrand(id: string, patch: Partial<Brand>): Promise<void>;
   expireListings(): Promise<number>;
+  createBrand(input: BrandInput): Promise<Brand>;
+  listAllCategories(): Promise<Category[]>;
+  saveCategory(input: CategoryInput): Promise<Category>;
+  listAds(): Promise<Ad[]>;
+  saveAd(input: AdInput): Promise<Ad>;
+  deleteAd(id: string): Promise<void>;
+  listAdStats(): Promise<AdStat[]>;
 }
 
 export const api: MarketApi = supabase ? supabaseApi(supabase) : demoApi;

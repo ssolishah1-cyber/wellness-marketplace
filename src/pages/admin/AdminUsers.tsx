@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { History, Search } from "lucide-react";
+import { ChevronRight, Download, History, Search } from "lucide-react";
 import { USERS_PAGE, admin, type AdminUser, type Role } from "@/lib/admin";
+import { conditionGuide } from "@/lib/nutrition";
+import { saveFile } from "@/lib/native";
+import ClientDetail, { toCsv } from "./ClientDetail";
 import { ErrorNote, Spinner } from "@/components/ui";
 import { useToast } from "@/components/Toast";
 
@@ -13,6 +16,7 @@ export default function AdminUsers({ myId }: { myId: string }) {
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [page, setPage] = useState(0);
+  const [open, setOpen] = useState<string | null>(null);
   const users = useQuery({ queryKey: ["admin-users", term, page], queryFn: () => admin.listUsers(term, page * USERS_PAGE) });
   const audit = useQuery({ queryKey: ["admin-audit"], queryFn: () => admin.auditLog() });
   const emailOf = (id: string | null) => users.data?.find((u) => u.user_id === id)?.email ?? "a user";
@@ -30,25 +34,44 @@ export default function AdminUsers({ myId }: { myId: string }) {
     setRole.mutate({ u, role, grant });
   };
 
+  const exportCsv = async () => {
+    // Every page of the current search, for the spreadsheet.
+    const all: AdminUser[] = [];
+    for (let off = 0; ; off += USERS_PAGE) {
+      const batch = await admin.listUsers(term, off);
+      all.push(...batch);
+      if (batch.length < USERS_PAGE) break;
+    }
+    await saveFile(`clients-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(all.map((u) => ({
+      name: u.display_name, email: u.email, joined: u.created_at.slice(0, 10), last_sign_in: u.last_sign_in_at?.slice(0, 10),
+      setup_done: u.onboarded ? "yes" : "no", health_focus: u.conditions.map((c) => conditionGuide(c)?.name ?? c),
+      last_logged: u.last_logged_on, days_logged_30: u.logged_days_30, roles: u.roles, vendor: u.vendor_status,
+    }))), "text/csv");
+  };
+
+  if (open) return <ClientDetail userId={open} onBack={() => { setOpen(null); void qc.invalidateQueries({ queryKey: ["admin-audit"] }); }} />;
+
   return (
     <div className="space-y-4">
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); setTerm(search); setPage(0); }}>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input id="admin-user-search" className="input pl-9" type="search" placeholder="Search by email" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input id="admin-user-search" className="input pl-9" type="search" placeholder="Search by name or email" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <button className="btn-primary">Search</button>
+        <button type="button" className="btn-outline" onClick={exportCsv} aria-label="Download client list"><Download className="h-4 w-4" /><span className="hidden sm:inline"> CSV</span></button>
       </form>
       <ErrorNote error={users.error ?? setRole.error} />
       {users.isLoading ? <Spinner /> : (
         <div className="card divide-y divide-slate-100">
           {(users.data ?? []).map((u) => (
             <div key={u.user_id} className="flex flex-wrap items-center gap-3 p-3">
-              <div className="min-w-0 flex-1">
-                <b className="block truncate text-sm">{u.email}{u.user_id === myId && <span className="font-normal text-slate-500"> (you)</span>}</b>
-                <span className="text-[11px] text-slate-500">Joined {date(u.created_at)} · last sign-in {date(u.last_sign_in_at)} · {u.onboarded ? "setup done" : "setup not finished"}{u.vendor_status ? ` · vendor (${u.vendor_status})` : ""}</span>
-              </div>
-              <div className="flex gap-1.5">
+              <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setOpen(u.user_id)} aria-label={`Open ${u.email}`}>
+                <b className="block truncate text-sm">{u.display_name ? `${u.display_name} · ` : ""}{u.email}{u.user_id === myId && <span className="font-normal text-slate-500"> (you)</span>}</b>
+                <span className="block text-[11px] text-slate-500">Joined {date(u.created_at)} · last logged {u.last_logged_on ? date(u.last_logged_on) : "never"} · {u.logged_days_30}/30 days · {u.onboarded ? "setup done" : "setup not finished"}{u.vendor_status ? ` · vendor (${u.vendor_status})` : ""}</span>
+                {u.conditions.length > 0 && <span className="mt-1 flex flex-wrap gap-1">{u.conditions.map((c) => <span key={c} className="badge bg-brand-50 text-brand-700">{conditionGuide(c)?.name ?? c}</span>)}</span>}
+              </button>
+              <div className="flex items-center gap-1.5">
                 {(["reviewer", "admin"] as Role[]).map((r) => {
                   const on = u.roles.includes(r);
                   const locked = r === "admin" && on && u.user_id === myId;
@@ -60,6 +83,7 @@ export default function AdminUsers({ myId }: { myId: string }) {
                     </button>
                   );
                 })}
+                <button type="button" className="btn-outline px-2 py-1" aria-label={`View ${u.email}`} onClick={() => setOpen(u.user_id)}><ChevronRight className="h-4 w-4" /></button>
               </div>
             </div>
           ))}
@@ -72,14 +96,17 @@ export default function AdminUsers({ myId }: { myId: string }) {
       </div>
 
       <div className="card p-4">
-        <h2 className="flex items-center gap-1.5 font-semibold"><History className="h-4 w-4" /> Role changes</h2>
+        <h2 className="flex items-center gap-1.5 font-semibold"><History className="h-4 w-4" /> Activity log</h2>
         {audit.data?.length ? (
           <ul className="mt-2 divide-y divide-slate-100 text-sm">
             {audit.data.map((a) => (
-              <li key={a.id} className="py-2">{a.action === "grant_role" ? "Gave" : "Removed"} <b>{a.details.role}</b> {a.action === "grant_role" ? "to" : "from"} {emailOf(a.target_user_id)} <span className="text-xs text-slate-500">· {new Date(a.created_at).toLocaleString()}</span></li>
+              <li key={a.id} className="py-2">
+                {a.action === "view_client" ? <>Viewed the record of {emailOf(a.target_user_id)}</> : <>{a.action === "grant_role" ? "Gave" : "Removed"} <b>{a.details.role}</b> {a.action === "grant_role" ? "to" : "from"} {emailOf(a.target_user_id)}</>}
+                <span className="text-xs text-slate-500"> · {new Date(a.created_at).toLocaleString()}</span>
+              </li>
             ))}
           </ul>
-        ) : <p className="mt-1 text-sm text-slate-500">No role changes yet.</p>}
+        ) : <p className="mt-1 text-sm text-slate-500">No admin activity yet.</p>}
       </div>
     </div>
   );

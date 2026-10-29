@@ -26,7 +26,7 @@ export interface Profile {
   created_at: string;
 }
 
-export type ConditionId = "diabetes" | "hypertension" | "ibs" | "focus" | "relaxation";
+export type ConditionId = "diabetes" | "hypertension" | "ibs" | "focus" | "relaxation" | "weight_loss" | "heart_health" | "general_wellness";
 export type FoodPref = "vegetarian" | "vegan" | "pescatarian" | "halal" | "kosher" | "gluten_free" | "dairy_free" | "nut_free" | "low_carb";
 export type FitnessLevel = "beginner" | "intermediate" | "advanced";
 export type WorkoutPlace = "home" | "gym";

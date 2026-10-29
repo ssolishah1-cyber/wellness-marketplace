@@ -68,6 +68,8 @@ export function exerciseFit(e: DbExercise, p: { fitness_level: FitnessLevel; wor
   if (c.includes("hypertension") && (e.category === "cardio" || e.category === "stretching")) { score += 2; why.push("Moderate, steady effort suits blood pressure"); }
   if (c.includes("ibs") && (e.category === "stretching" || e.category === "cardio")) { score += 2; why.push("Gentle movement can ease digestion"); }
   if (c.includes("focus") && (e.category === "cardio" || bigMove)) { score += 2; why.push("Gets your heart rate up for an energy boost"); }
+  if (c.includes("weight_loss") && (e.category === "cardio" || bigMove)) { score += 2; why.push("Burns more energy per minute"); }
+  if (c.includes("heart_health") && e.category === "cardio") { score += 2; why.push("Regular cardio strengthens your heart"); }
   if (c.includes("relaxation") && e.category === "stretching") { score += 3; why.push("Slow stretching helps you unwind"); }
   return { ok: true, score, why };
 }

@@ -269,7 +269,7 @@ export function SignInPrompt({ what }: { what: string }) {
     <div className="card mx-auto grid max-w-md justify-items-center gap-3 p-8 text-center">
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-100 text-brand-700"><LogIn className="h-6 w-6" /></span>
       <h1 className="text-xl font-bold">Sign in to {what}</h1>
-      <p className="text-sm text-ink-2">Your meals, water and weight are private to your account.</p>
+      <p className="text-sm text-ink-2">Your meals, water and weight are kept in your account, visible only to you and our care team.</p>
       {isDemoMode
         ? <p className="text-xs text-ink-muted">Demo mode: choose <b>App user</b> in the bar at the top.</p>
         : <Link to="/profile" className="btn-primary">Sign in or create an account</Link>}

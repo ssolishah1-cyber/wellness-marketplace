@@ -7,6 +7,7 @@ import {
   CategoryIcon, EmptyState, ListingCard, NUTRITION_INDEPENDENCE_NOTE, SkeletonGrid, SponsoredBadge, useCategories, useViewer,
 } from "@/components/ui";
 import DemoGuide from "@/components/DemoGuide";
+import { FeaturedSlot, HomeBanner, useLiveAds } from "@/components/ads";
 
 export default function MarketHome() {
   const [q, setQ] = useState("");
@@ -14,6 +15,11 @@ export default function MarketHome() {
   const { data: viewer } = useViewer();
   const featured = useQuery({ queryKey: ["brands", "featured"], queryFn: () => api.listBrands({ featuredOnly: true }) });
   const listings = useQuery({ queryKey: ["listings", "published", q], queryFn: () => api.listPublishedListings({ q }) });
+  const ads = useLiveAds();
+  const banners = (ads.data ?? []).filter((a) => a.kind === "home_banner");
+  const featuredAds = (ads.data ?? []).filter((a) => a.kind === "featured_listing")
+    .map((ad) => ({ ad, listing: listings.data?.find((l) => l.id === ad.listing_id) }))
+    .filter((x): x is { ad: typeof x.ad; listing: NonNullable<typeof x.listing> } => !!x.listing);
 
   return (
     <div className="space-y-7">
@@ -26,6 +32,22 @@ export default function MarketHome() {
           <input className="input pl-9" placeholder="Search the marketplace" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
       </section>
+
+      {!q && banners.length > 0 && <HomeBanner ads={banners} />}
+
+      {!q && featuredAds.length > 0 && (
+        <section aria-label="Featured listings">
+          <div className="mb-2 flex items-center gap-2">
+            <h2 className="font-semibold">Featured</h2>
+            <SponsoredBadge />
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {featuredAds.map(({ ad, listing }) => (
+              <FeaturedSlot key={ad.id} ad={ad}><ListingCard listing={listing} categories={categories} sponsored /></FeaturedSlot>
+            ))}
+          </div>
+        </section>
+      )}
 
       {!q && (
         <section>

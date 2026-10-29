@@ -51,12 +51,12 @@ export function PrivacyPage() {
       <ul>
         <li>We never sell your personal or health data.</li>
         <li>We never use your meals, weight, goals, health focus or other health data to choose, rank or target marketplace listings or ads.</li>
-        <li>Our team sees only account details (email, sign-up and sign-in dates) and anonymous totals, such as how many people chose a health focus. Totals under 5 are never shown. No one on our team can open your meals, weight, workouts or health focus.</li>
         <li>We never share your health data with marketplace partners, including affiliated partners such as TriggerMD and XIMMD.</li>
       </ul>
 
       <h2>Who can see your data</h2>
-      <p>Your health and nutrition data is visible only to you when signed in. It is stored with our hosting providers (Supabase for the database and sign-in, Vercel for the website), who process it on our behalf. A provider you contact sees only the details you chose to send.</p>
+      <p>You can see all of your data when signed in. Our <b>care team</b> (staff with admin access at {COMPANY}) can also view your profile, goals, health focus, food, water, weight and workout logs, so they can support you, answer questions and improve the service. Every time a staff member opens a client's record it is logged, and access is limited to authorised staff. Staff who review Market listings cannot see client data.</p>
+      <p>Your data is stored with our hosting providers (Supabase for the database and sign-in, Vercel for the website), who process it on our behalf. A provider you contact through the Market sees only the details you chose to send.</p>
 
       <h2>Sponsored and affiliated listings</h2>
       <p>Some Market listings are sponsored or come from businesses affiliated with us. They are always labelled. Links to partner websites tell the partner the visit came from this app, but never include your name or health data. Purchases and services on partner sites are covered by their own privacy policies.</p>

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MarketApi } from "./api";
-import type { Brand, Category, ClickRow, Inquiry, Listing, Review, Vendor } from "./types";
+import type { Ad, AdStat, Brand, Category, ClickRow, Inquiry, LiveAd, Listing, Review, Vendor } from "./types";
 
 function unwrap<T>(res: { data: T | null; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
@@ -53,6 +53,14 @@ export function supabaseApi(sb: SupabaseClient): MarketApi {
 
     async recordClick(listingId, source) {
       await sb.rpc("record_marketplace_click", { _listing_id: listingId, _source: source });
+    },
+
+    async listLiveAds() {
+      return unwrap<LiveAd[]>(await sb.rpc("list_live_ads"));
+    },
+
+    async recordAdEvent(adId, event) {
+      await sb.rpc("record_ad_event", { _ad_id: adId, _event: event });
     },
 
     async sendInquiry(input) {
@@ -154,6 +162,43 @@ export function supabaseApi(sb: SupabaseClient): MarketApi {
 
     async expireListings() {
       return unwrap<number>(await sb.rpc("expire_marketplace_listings"));
+    },
+
+    async createBrand(input) {
+      return unwrap<Brand>(await sb.from("marketplace_brands").insert({ ...input, slug: input.slug || slugify(input.name) }).select().single());
+    },
+
+    async listAllCategories() {
+      return unwrap<Category[]>(await sb.from("marketplace_categories").select("*").order("display_order"));
+    },
+
+    async saveCategory(input) {
+      const { id, ...fields } = input;
+      if (!id && !fields.slug) fields.slug = slugify(fields.name).replace(/-[a-z0-9]{5}$/, "");
+      const res = id
+        ? await sb.from("marketplace_categories").update(fields).eq("id", id).select().single()
+        : await sb.from("marketplace_categories").insert(fields).select().single();
+      return unwrap<Category>(res);
+    },
+
+    async listAds() {
+      return unwrap<Ad[]>(await sb.from("marketplace_ads").select("*").order("created_at", { ascending: false }));
+    },
+
+    async saveAd(input) {
+      const { id, ...fields } = input;
+      const res = id
+        ? await sb.from("marketplace_ads").update(fields).eq("id", id).select().single()
+        : await sb.from("marketplace_ads").insert(fields).select().single();
+      return unwrap<Ad>(res);
+    },
+
+    async deleteAd(id) {
+      unwrap(await sb.from("marketplace_ads").delete().eq("id", id));
+    },
+
+    async listAdStats() {
+      return unwrap<AdStat[]>(await sb.from("marketplace_ad_stats").select("*").order("day"));
     },
   };
 }

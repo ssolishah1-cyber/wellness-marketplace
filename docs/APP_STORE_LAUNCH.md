@@ -62,7 +62,7 @@ Wellness Jumpstart makes healthy eating simple.
 • Gentle reminders to log meals and drink water
 • Explore a Market of reviewed wellness partners, from telehealth to coaching and fitness
 
-Your health data is private to your account and is never used to choose or rank anything in the Market. Download or delete your data at any time.
+Your health data stays in your account, is visible only to you and our care team, and is never used for ads or to choose or rank anything in the Market. Download or delete your data at any time.
 
 Wellness Jumpstart provides general wellness information and is not medical advice.
 
@@ -87,7 +87,7 @@ Not collected: location, contacts, browsing history, advertising data. No tracki
 - Purpose: App functionality, Account management. Not shared with third parties (hosting providers process on our behalf). Not used for ads.
 - Encrypted in transit: Yes. Users can request deletion: Yes (in app and at the deletion URL).
 
-**Health app notes for review:** The app is a wellness tracker; it does not diagnose or treat. Condition guides (blood sugar, blood pressure, IBS, focus, stress & sleep) are general education with cited public-health sources and a "not medical advice" notice; the optional health focus is stored only after explicit in-app consent, can be removed at any time, and is never used for ads or the Market. Workouts are general fitness plans with a "check with your doctor" notice. Telehealth listings link to licensed third-party providers (TriggerMD), are labelled Sponsored/Affiliated, and are never targeted using health data.
+**Health app notes for review:** The app is a wellness tracker; it does not diagnose or treat. Condition guides (blood sugar, blood pressure, IBS, focus, stress & sleep) are general education with cited public-health sources and a "not medical advice" notice; the optional health focus is stored only after explicit in-app consent, can be removed at any time, and is never used for ads or the Market. Authorised care-team staff can view client records to support them (disclosed at sign-up and in the Privacy Policy; every view is logged). Market ads are labelled Sponsored and are placed by position and category only. Workouts are general fitness plans with a "check with your doctor" notice. Telehealth listings link to licensed third-party providers (TriggerMD), are labelled Sponsored/Affiliated, and are never targeted using health data.
 
 ## 7. Review notes and demo account
 
@@ -106,7 +106,7 @@ Needed: iPhone 6.9" (1320 × 2868) and Android phone. Suggested screens: Home (F
 - [ ] Privacy Policy and Terms approved by a lawyer (`VITE_LEGAL_APPROVED=true`), support email set
 - [ ] Real TriggerMD/XIMMD content and at least a few published listings
 - [ ] Tested on a real iPhone (TestFlight) and Android phone (internal testing)
-- [ ] Supabase migrations 001–007 run (`supabase/setup_all.sql` for a new project)
+- [ ] Supabase migrations 001–008 run (`supabase/setup_all.sql` for a new project)
 - [ ] Publisher decided (POWERVATE LLC recommended) and named in the Privacy Policy and Terms (`VITE_COMPANY_NAME`)
 - [ ] App name trademark check (https://tmsearch.uspto.gov) if renaming, e.g. to Fitologika
 - [ ] Every "Learn more" source link in the condition guides opened once

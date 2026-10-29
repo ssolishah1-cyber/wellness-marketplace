@@ -137,3 +137,48 @@ export const STATUS_LABEL: Record<ListingStatus, string> = {
 };
 
 export const LISTING_TYPES: ListingType[] = ["product", "service", "program", "provider", "education", "event"];
+
+// ---------- Ads (supabase/migrations/008_ads_clients_conditions.sql) ----------
+export type AdKind = "featured_listing" | "home_banner" | "category_sponsor";
+export const AD_KIND_LABEL: Record<AdKind, string> = {
+  featured_listing: "Featured listing",
+  home_banner: "Market home banner",
+  category_sponsor: "Category sponsor",
+};
+export type PaymentStatus = "unpaid" | "invoiced" | "paid" | "complimentary";
+
+/** What the app shows: public fields only. */
+export interface LiveAd {
+  id: string;
+  kind: AdKind;
+  title: string;
+  body: string | null;
+  image_url: string | null;
+  listing_id: string | null;
+  listing_slug: string | null;
+  brand_id: string | null;
+  brand_slug: string | null;
+  category_id: string | null;
+  link_url: string | null;
+  advertiser: string;
+  priority: number;
+}
+
+/** Full ad record, staff only. */
+export interface Ad extends Omit<LiveAd, "listing_slug" | "brand_slug"> {
+  vendor_id: string | null;
+  starts_at: string;
+  ends_at: string | null;
+  is_active: boolean;
+  price_cents: number | null;
+  payment_status: PaymentStatus;
+  notes: string | null;
+  created_at: string;
+}
+
+export type AdInput = Partial<Omit<Ad, "id" | "created_at">> & { id?: string; kind: AdKind; title: string; advertiser: string };
+
+export interface AdStat { ad_id: string; day: string; views: number; clicks: number }
+
+export type CategoryInput = Partial<Omit<Category, "id">> & { id?: string; name: string };
+export type BrandInput = Partial<Omit<Brand, "id">> & { name: string };

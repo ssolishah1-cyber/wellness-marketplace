@@ -1,9 +1,9 @@
 import type { MarketApi } from "./api";
 import {
-  DEMO_USERS, demoBrands, demoCategories, demoClicks, demoListings, demoReviews, demoVendors,
+  DEMO_USERS, demoAdStats, demoAds, demoBrands, demoCategories, demoClicks, demoListings, demoReviews, demoVendors,
 } from "./demoData";
 import { slugify } from "./supabaseApi";
-import type { Inquiry, Listing, ListingStatus, Review, Vendor, Viewer } from "./types";
+import type { Ad, Inquiry, LiveAd, Listing, ListingStatus, Review, Vendor, Viewer } from "./types";
 
 // In-memory stand-in for Supabase so the module can be previewed without a
 // backend. It applies the same rules as the database triggers and RLS policies.
@@ -41,7 +41,36 @@ const db = {
   reviews: structuredClone(demoReviews),
   clicks: structuredClone(demoClicks),
   inquiries: [] as Inquiry[],
+  ads: structuredClone(demoAds),
+  adStats: structuredClone(demoAdStats),
 };
+
+/** Same rules as list_live_ads() in migration 008. */
+function liveAds(): LiveAd[] {
+  const now = nowIso();
+  return db.ads
+    .filter((a) => a.is_active && a.starts_at <= now && (!a.ends_at || a.ends_at > now))
+    .map((a) => ({ a, l: db.listings.find((x) => x.id === a.listing_id), b: db.brands.find((x) => x.id === a.brand_id) }))
+    .filter(({ a, l, b }) => (!a.listing_id || (l && isLive(l))) && (!a.brand_id || b?.is_active))
+    .sort((x, y) => y.a.priority - x.a.priority || y.a.starts_at.localeCompare(x.a.starts_at))
+    .map(({ a, l, b }) => ({
+      id: a.id, kind: a.kind, title: a.title, body: a.body, image_url: a.image_url, listing_id: a.listing_id, listing_slug: l?.slug ?? null,
+      brand_id: a.brand_id, brand_slug: b?.slug ?? null, category_id: a.category_id, link_url: a.link_url, advertiser: a.advertiser, priority: a.priority,
+    }));
+}
+
+const httpOk = (u: string | null | undefined) => !u || /^https?:\/\//i.test(u);
+
+function validateAd(a: Ad) {
+  if (!a.title.trim() || a.title.length > 80) throw new Error("Give the ad a title (up to 80 characters).");
+  if (!a.advertiser.trim()) throw new Error("Who is the advertiser?");
+  if (!a.listing_id && !a.brand_id && !a.link_url) throw new Error("Choose where the ad goes: a listing, a brand or a web link.");
+  if (a.kind === "featured_listing" && !a.listing_id) throw new Error("A featured listing ad needs a listing.");
+  if (a.kind === "category_sponsor" && !a.category_id) throw new Error("A category sponsor ad needs a category.");
+  if (a.kind === "home_banner" && !a.image_url) throw new Error("A banner ad needs an image.");
+  if (!httpOk(a.link_url) || (a.image_url && !a.image_url.startsWith("data:") && !httpOk(a.image_url))) throw new Error("Links must start with https://");
+  if (a.ends_at && a.ends_at <= a.starts_at) throw new Error("The end date must be after the start date.");
+}
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const nowIso = () => new Date().toISOString();
@@ -115,6 +144,16 @@ export const demoApi: MarketApi = {
     const row = db.clicks.find((c) => c.listing_id === listingId && c.day === day && c.source === source);
     if (row) row.click_count++;
     else db.clicks.push({ listing_id: listingId, day, source, click_count: 1 });
+  },
+
+  listLiveAds: async () => delay(liveAds()),
+
+  recordAdEvent: async (adId, event) => {
+    if (!liveAds().some((a) => a.id === adId)) return;
+    const day = nowIso().slice(0, 10);
+    let row = db.adStats.find((s) => s.ad_id === adId && s.day === day);
+    if (!row) db.adStats.push(row = { ad_id: adId, day, views: 0, clicks: 0 });
+    if (event === "view") row.views++; else row.clicks++;
   },
 
   sendInquiry: async (input) => {
@@ -288,6 +327,49 @@ export const demoApi: MarketApi = {
     const b = db.brands.find((x) => x.id === id);
     if (b) Object.assign(b, patch, { id: b.id });
   },
+
+  createBrand: async (input) => {
+    requireStaff();
+    if (!input.name.trim()) throw new Error("Give the brand a name.");
+    const b = { vendor_id: null, tagline: null, description: null, logo_url: null, website_url: null, is_owned_brand: false, is_featured: false,
+      affiliation_disclosure: null, is_active: true, ...input, id: uid(), slug: input.slug || slugify(input.name) };
+    if (!httpOk(b.website_url)) throw new Error("Links must start with https://");
+    db.brands.push(b);
+    return delay(b);
+  },
+
+  listAllCategories: async () => { requireStaff(); return delay([...db.categories].sort((a, b) => a.display_order - b.display_order)); },
+
+  saveCategory: async (input) => {
+    requireStaff();
+    if (!input.name.trim()) throw new Error("Give the category a name.");
+    const existing = input.id ? db.categories.find((c) => c.id === input.id) : undefined;
+    if (existing) { Object.assign(existing, input); return delay(existing); }
+    const c = { description: null, icon: null, display_order: db.categories.length + 1, is_active: true, ...input,
+      id: uid(), slug: input.slug || slugify(input.name).replace(/-[a-z0-9]{5}$/, "") };
+    if (db.categories.some((x) => x.slug === c.slug)) throw new Error("A category with that name already exists.");
+    db.categories.push(c);
+    return delay(c);
+  },
+
+  listAds: async () => { requireStaff(); return delay([...db.ads].sort((a, b) => b.created_at.localeCompare(a.created_at))); },
+
+  saveAd: async (input) => {
+    requireStaff();
+    const existing = input.id ? db.ads.find((a) => a.id === input.id) : undefined;
+    const next: Ad = {
+      body: null, image_url: null, listing_id: null, brand_id: null, category_id: null, link_url: null, vendor_id: null,
+      starts_at: nowIso(), ends_at: null, is_active: true, priority: 0, price_cents: null, payment_status: "unpaid", notes: null,
+      ...existing, ...input, id: existing?.id ?? uid(), created_at: existing?.created_at ?? nowIso(),
+    } as Ad;
+    validateAd(next);
+    if (existing) Object.assign(existing, next); else db.ads.push(next);
+    return delay(next);
+  },
+
+  deleteAd: async (id) => { requireStaff(); db.ads = db.ads.filter((a) => a.id !== id); db.adStats = db.adStats.filter((s) => s.ad_id !== id); },
+
+  listAdStats: async () => { requireStaff(); return delay(db.adStats); },
 
   expireListings: async () => {
     requireStaff();

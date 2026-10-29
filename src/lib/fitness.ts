@@ -94,6 +94,8 @@ function conditionNotes(c: ConditionId[], kind: SessionKind): string[] {
     : "If you take insulin or medicines that can cause lows, check your glucose before exercise and carry fast-acting carbs.");
   if (c.includes("ibs")) n.push("Leave 1–2 hours after a large meal. Gentle movement like walking and yoga often eases symptoms.");
   if (c.includes("focus") && kind !== "mobility") n.push("Short on time? Even the first 10 minutes give a boost to focus and energy.");
+  if (c.includes("weight_loss") && kind === "cardio") n.push("Consistency beats intensity: every session counts toward 150+ minutes a week.");
+  if (c.includes("heart_health")) n.push("Build up gradually. Stop and get help if you feel chest pain, unusual breathlessness or dizziness.");
   if (c.includes("relaxation") && kind === "mobility") n.push("Move slowly and match each movement to your breath. Ideal in the evening.");
   return n;
 }

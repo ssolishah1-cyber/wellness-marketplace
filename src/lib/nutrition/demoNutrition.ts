@@ -49,6 +49,12 @@ function seed(userId: string): Store {
   };
 }
 
+/** Demo admin view of any user's data (mirrors admin_client_detail). */
+export function demoSnapshot(userId: string): Store {
+  if (!stores.has(userId)) stores.set(userId, seed(userId));
+  return structuredClone(stores.get(userId)!);
+}
+
 function store(): Store {
   const id = getDemoUserId();
   if (!id) throw new Error("Please sign in to use this.");

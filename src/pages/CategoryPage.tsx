@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import { LISTING_TYPES, type ListingType } from "@/lib/types";
 import { CategoryIcon, EmptyState, ListingCard, SkeletonGrid, useCategories } from "@/components/ui";
+import { CategorySponsor, FeaturedSlot, useLiveAds } from "@/components/ads";
 
 type Sort = "newest" | "price_asc" | "price_desc";
 
@@ -22,6 +23,10 @@ export default function CategoryPage() {
     enabled: !!category,
   });
 
+  const ads = useLiveAds();
+  const sponsor = (ads.data ?? []).find((a) => a.kind === "category_sponsor" && a.category_id === category?.id);
+  // Featured-listing ads for this category are pinned first (labelled Sponsored) when they match the filters.
+  const featuredAds = (ads.data ?? []).filter((a) => a.kind === "featured_listing");
   const shown = useMemo(() => {
     const max = maxPrice ? Number(maxPrice) * 100 : null;
     const rows = (listings.data ?? [])
@@ -32,6 +37,8 @@ export default function CategoryPage() {
     if (sort === "price_desc") rows.sort((a, b) => (b.price_cents ?? -1) - (a.price_cents ?? -1));
     return rows;
   }, [listings.data, type, maxPrice, sort]);
+  const pinned = featuredAds.map((ad) => ({ ad, listing: shown.find((l) => l.id === ad.listing_id) })).filter((x) => x.listing);
+  const rest = shown.filter((l) => !pinned.some((p) => p.listing!.id === l.id));
 
   if (!catLoading && !category) return <EmptyState title="Category not found"><Link to="/market" className="text-brand-700">Back to Market</Link></EmptyState>;
 
@@ -47,6 +54,7 @@ export default function CategoryPage() {
           </div>
         </div>
       )}
+      {sponsor && <CategorySponsor ad={sponsor} />}
       <div className="flex flex-wrap gap-2">
         <select className="input w-auto" value={type} onChange={(e) => setType(e.target.value as ListingType | "")}>
           <option value="">All types</option>
@@ -61,7 +69,8 @@ export default function CategoryPage() {
       </div>
       {listings.isLoading || catLoading ? <SkeletonGrid /> : shown.length ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {shown.map((l) => <ListingCard key={l.id} listing={l} categories={categories} />)}
+          {pinned.map(({ ad, listing }) => <FeaturedSlot key={ad.id} ad={ad}><ListingCard listing={listing!} categories={categories} sponsored /></FeaturedSlot>)}
+          {rest.map((l) => <ListingCard key={l.id} listing={l} categories={categories} />)}
         </div>
       ) : <EmptyState title="No listings in this category yet" />}
     </div>
