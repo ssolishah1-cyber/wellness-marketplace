@@ -24,8 +24,8 @@ textarea { width:100%; box-sizing:border-box; min-height:360px; font-family:var(
 </style>
 <main>
   <div>
-    <h1>Supabase update: health focus &amp; workouts</h1>
-    <p class="lead">Adds health focus, food preferences, fitness settings and the private workout log. Safe to run more than once.</p>
+    <h1>Supabase update: admin panel</h1>
+    <p class="lead">Adds the admin dashboard totals, user list, role management and a log of role changes. Admins never see anyone&#x27;s health data. Safe to run more than once.</p>
   </div>
   <section class="panel">
     <div class="actions">
@@ -39,54 +39,104 @@ textarea { width:100%; box-sizing:border-box; min-height:360px; font-family:var(
       <li>Delete anything already in the editor, paste, and click <b>Run</b>. It should finish with “Success. No rows returned”.</li>
     </ol>
   </section>
-  <label for="sql" class="meta">Script · 47 lines · migration 006</label>
+  <label for="sql" class="meta">Script · 97 lines · migration 007</label>
   <textarea id="sql" readonly spellcheck="false">-- =====================================================================
--- Health profile (conditions, food preferences, fitness) and workout log.
--- Run after 005.
+-- Admin panel: app statistics, user list and role management.
+-- Run after 006.
 --
--- Health conditions are sensitive. They live on the owner-only profiles
--- row (see 003), are saved only with explicit consent, and are never read
--- by anything in the marketplace.
+-- Admins see account details (email, sign-up and last sign-in dates,
+-- roles) and anonymous totals. They never see anyone&#x27;s meals, weight,
+-- workouts or health focus. Health-focus totals under 5 are hidden so no
+-- one can be singled out.
 -- =====================================================================
 
-alter table public.profiles
-  add column if not exists conditions text[] not null default &#x27;{}&#x27;,
-  add column if not exists health_consent_at timestamptz,
-  add column if not exists food_preferences text[] not null default &#x27;{}&#x27;,
-  add column if not exists fitness_level text not null default &#x27;beginner&#x27;,
-  add column if not exists workout_place text not null default &#x27;home&#x27;,
-  add column if not exists workout_days int not null default 3;
-
-do $$ begin
-  alter table public.profiles add constraint profiles_conditions_known
-    check (conditions &lt;@ array[&#x27;diabetes&#x27;, &#x27;hypertension&#x27;, &#x27;ibs&#x27;, &#x27;focus&#x27;, &#x27;relaxation&#x27;]::text[]);
-  alter table public.profiles add constraint profiles_conditions_need_consent
-    check (cardinality(conditions) = 0 or health_consent_at is not null);
-  alter table public.profiles add constraint profiles_food_preferences_known
-    check (food_preferences &lt;@ array[&#x27;vegetarian&#x27;, &#x27;vegan&#x27;, &#x27;pescatarian&#x27;, &#x27;halal&#x27;, &#x27;kosher&#x27;, &#x27;gluten_free&#x27;, &#x27;dairy_free&#x27;, &#x27;nut_free&#x27;, &#x27;low_carb&#x27;]::text[]);
-  alter table public.profiles add constraint profiles_fitness_level_known
-    check (fitness_level in (&#x27;beginner&#x27;, &#x27;intermediate&#x27;, &#x27;advanced&#x27;));
-  alter table public.profiles add constraint profiles_workout_place_known
-    check (workout_place in (&#x27;home&#x27;, &#x27;gym&#x27;));
-  alter table public.profiles add constraint profiles_workout_days_range
-    check (workout_days between 2 and 6);
-exception when duplicate_object then null; end $$;
-
--- ---------- Workout log -------------------------------------------------
-create table if not exists public.workout_logs (
-  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  done_on date not null default current_date,
-  session_id text not null check (char_length(session_id) between 1 and 40),
-  minutes int not null check (minutes between 1 and 300),
-  created_at timestamptz not null default now(),
-  primary key (user_id, done_on, session_id)
+create table if not exists public.admin_audit_log (
+  id bigint generated always as identity primary key,
+  actor_id uuid references auth.users(id) on delete set null,
+  action text not null,
+  target_user_id uuid references auth.users(id) on delete set null,
+  details jsonb not null default &#x27;{}&#x27;,
+  created_at timestamptz not null default now()
 );
+alter table public.admin_audit_log enable row level security;
+drop policy if exists &quot;admins read audit log&quot; on public.admin_audit_log;
+create policy &quot;admins read audit log&quot; on public.admin_audit_log
+  for select to authenticated using (public.has_role(auth.uid(), &#x27;admin&#x27;));
+revoke all on public.admin_audit_log from anon;
+-- Rows are written only by the functions below.
+revoke insert, update, delete on public.admin_audit_log from authenticated;
 
-alter table public.workout_logs enable row level security;
-drop policy if exists &quot;own workout logs&quot; on public.workout_logs;
-create policy &quot;own workout logs&quot; on public.workout_logs
-  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
-revoke all on public.workout_logs from anon;
+create or replace function public.require_admin()
+returns void language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.has_role(auth.uid(), &#x27;admin&#x27;) then
+    raise exception &#x27;Admins only&#x27; using errcode = &#x27;42501&#x27;;
+  end if;
+end $$;
+
+create or replace function public.admin_app_stats()
+returns jsonb language plpgsql stable security definer set search_path = public, auth as $$
+begin
+  perform public.require_admin();
+  return jsonb_build_object(
+    &#x27;total_users&#x27;,      (select count(*) from auth.users),
+    &#x27;new_users_7d&#x27;,     (select count(*) from auth.users where created_at &gt; now() - interval &#x27;7 days&#x27;),
+    &#x27;new_users_30d&#x27;,    (select count(*) from auth.users where created_at &gt; now() - interval &#x27;30 days&#x27;),
+    &#x27;onboarded&#x27;,        (select count(*) from public.profiles where onboarded_at is not null),
+    &#x27;active_7d&#x27;,        (select count(distinct user_id) from public.food_entries where eaten_on &gt; current_date - 7),
+    &#x27;food_entries_7d&#x27;,  (select count(*) from public.food_entries where eaten_on &gt; current_date - 7),
+    &#x27;workouts_7d&#x27;,      (select count(*) from public.workout_logs where done_on &gt; current_date - 7),
+    &#x27;with_health_focus&#x27;,(select count(*) from public.profiles where cardinality(conditions) &gt; 0),
+    &#x27;condition_counts&#x27;, (select coalesce(jsonb_object_agg(c, case when n &gt;= 5 then n end), &#x27;{}&#x27;::jsonb)
+                           from (select unnest(conditions) c, count(*) n from public.profiles group by 1) x),
+    &#x27;signups_by_day&#x27;,   (select coalesce(jsonb_agg(jsonb_build_object(&#x27;day&#x27;, d, &#x27;n&#x27;, n) order by d), &#x27;[]&#x27;::jsonb)
+                           from (select gs::date d, (select count(*) from auth.users u where u.created_at::date = gs::date) n
+                                 from generate_series(current_date - 29, current_date, interval &#x27;1 day&#x27;) gs) s),
+    &#x27;pending_listings&#x27;, (select count(*) from public.marketplace_listings where status = &#x27;pending_review&#x27;),
+    &#x27;pending_vendors&#x27;,  (select count(*) from public.marketplace_vendors where status = &#x27;pending&#x27;),
+    &#x27;inquiries_7d&#x27;,     (select count(*) from public.marketplace_inquiries where created_at &gt; now() - interval &#x27;7 days&#x27;)
+  );
+end $$;
+
+create or replace function public.admin_list_users(_search text default &#x27;&#x27;, _limit int default 50, _offset int default 0)
+returns table (user_id uuid, email text, created_at timestamptz, last_sign_in_at timestamptz, onboarded boolean, roles text[], vendor_status text)
+language plpgsql stable security definer set search_path = public, auth as $$
+begin
+  perform public.require_admin();
+  return query
+    select u.id, u.email::text, u.created_at, u.last_sign_in_at, p.onboarded_at is not null,
+           array(select r.role::text from public.user_roles r where r.user_id = u.id order by 1),
+           (select v.status::text from public.marketplace_vendors v where v.owner_user_id = u.id order by v.created_at limit 1)
+    from auth.users u
+    left join public.profiles p on p.user_id = u.id
+    where coalesce(_search, &#x27;&#x27;) = &#x27;&#x27; or u.email ilike &#x27;%&#x27; || replace(replace(_search, &#x27;%&#x27;, &#x27;\%&#x27;), &#x27;_&#x27;, &#x27;\_&#x27;) || &#x27;%&#x27;
+    order by u.created_at desc
+    limit least(greatest(_limit, 1), 200) offset greatest(_offset, 0);
+end $$;
+
+create or replace function public.admin_set_role(_user_id uuid, _role public.app_role, _grant boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform public.require_admin();
+  if _grant then
+    insert into public.user_roles (user_id, role) values (_user_id, _role) on conflict do nothing;
+  else
+    if _role = &#x27;admin&#x27; and _user_id = auth.uid() then
+      raise exception &#x27;You can&#x27;&#x27;t remove your own admin role.&#x27;;
+    end if;
+    delete from public.user_roles where user_id = _user_id and role = _role;
+  end if;
+  insert into public.admin_audit_log (actor_id, action, target_user_id, details)
+  values (auth.uid(), case when _grant then &#x27;grant_role&#x27; else &#x27;revoke_role&#x27; end, _user_id, jsonb_build_object(&#x27;role&#x27;, _role));
+end $$;
+
+revoke execute on function public.require_admin() from public, anon, authenticated;
+revoke execute on function public.admin_app_stats() from public, anon;
+revoke execute on function public.admin_list_users(text, int, int) from public, anon;
+revoke execute on function public.admin_set_role(uuid, public.app_role, boolean) from public, anon;
+grant execute on function public.admin_app_stats() to authenticated;
+grant execute on function public.admin_list_users(text, int, int) to authenticated;
+grant execute on function public.admin_set_role(uuid, public.app_role, boolean) to authenticated;
 </textarea>
 </main>
 <script>

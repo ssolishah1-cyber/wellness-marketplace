@@ -1,10 +1,11 @@
 import type { ConditionId, FitnessLevel, Profile, WorkoutPlace } from "@/lib/nutrition/types";
 
 // Tailored weekly workout plans, built on the device from the user's level,
-// place, days per week, weight goal and health focus. No external service:
-// the exercise library below follows standard beginner-to-advanced
-// programming (ACSM / CDC activity guidelines: 150 min moderate activity and
-// 2+ strength days a week). It is general fitness guidance, not therapy.
+// place, days per week, weight goal and health focus. The plan follows
+// standard beginner-to-advanced programming (ACSM / CDC activity guidelines:
+// 150 min moderate activity and 2+ strength days a week). Each exercise links
+// to the open Free Exercise DB (src/lib/exerciseDb.ts) for photos and
+// same-muscle alternatives. It is general fitness guidance, not therapy.
 
 export interface Exercise {
   id: string;
@@ -16,32 +17,36 @@ export interface Exercise {
   /** Static holds raise blood pressure; swapped out for the blood-pressure focus. */
   isometric?: boolean;
   timed?: boolean;
+  /** Matching entry in the open Free Exercise DB, for photos. */
+  dbId?: string;
+  /** Free Exercise DB muscle names, used to suggest alternatives. */
+  muscles?: string[];
 }
 
 export const EXERCISES: Record<string, Exercise> = Object.fromEntries(([
-  { id: "squat", name: "Bodyweight squat", place: "any", target: "Legs & glutes", how: ["Feet shoulder-width apart, toes slightly out", "Sit hips back and down as if onto a chair", "Keep your chest up and knees over toes", "Push through your heels to stand"], easier: "Squat down to a chair and stand back up" },
-  { id: "pushup", name: "Push-up", place: "any", target: "Chest, shoulders & arms", how: ["Hands a little wider than shoulders", "Body in one straight line from head to heels", "Lower your chest toward the floor", "Press back up, breathing out"], easier: "Hands on a kitchen counter or wall" },
-  { id: "backpack-row", name: "Backpack row", place: "any", target: "Upper back & arms", how: ["Fill a backpack with books and hold it by the top handle or straps", "Hinge forward at the hips with a flat back", "Pull the bag toward your lower ribs", "Lower it slowly"], easier: "Use a lighter bag" },
-  { id: "glute-bridge", name: "Glute bridge", place: "any", target: "Glutes & lower back", how: ["Lie on your back, knees bent, feet flat", "Squeeze your glutes and lift your hips", "Pause at the top, ribs down", "Lower slowly"] },
-  { id: "plank", name: "Plank", place: "any", target: "Core", how: ["Forearms under shoulders", "Body straight from head to heels", "Breathe steadily; don't hold your breath"], easier: "Knees on the floor", isometric: true, timed: true },
-  { id: "dead-bug", name: "Dead bug", place: "any", target: "Core", how: ["Lie on your back, arms up, knees bent at 90°", "Slowly lower the opposite arm and leg", "Keep your lower back pressed to the floor", "Alternate sides, breathing out as you reach"] },
-  { id: "reverse-lunge", name: "Reverse lunge", place: "any", target: "Legs & glutes", how: ["Stand tall, step one foot back", "Lower until both knees are about 90°", "Push through the front heel to return", "Alternate legs"], easier: "Hold a chair for balance" },
-  { id: "step-up", name: "Step-up", place: "any", target: "Legs & glutes", how: ["Use a sturdy step or bottom stair", "Step up with one foot, pressing through the heel", "Stand tall at the top", "Step down slowly and switch legs"] },
-  { id: "bird-dog", name: "Bird dog", place: "any", target: "Core & back", how: ["On hands and knees", "Reach one arm forward and the opposite leg back", "Keep hips level", "Return and switch sides"] },
-  { id: "goblet-squat", name: "Goblet squat", place: "gym", target: "Legs & glutes", how: ["Hold a dumbbell at your chest", "Squat down between your knees, chest up", "Drive up through your heels"] },
-  { id: "db-bench", name: "Dumbbell bench press", place: "gym", target: "Chest, shoulders & arms", how: ["Lie on a bench, dumbbells over your chest", "Lower them to the sides of your chest", "Press up, breathing out"] },
-  { id: "lat-pulldown", name: "Lat pulldown", place: "gym", target: "Back & arms", how: ["Grip the bar just wider than shoulders", "Pull it to your upper chest, elbows down", "Return slowly"] },
-  { id: "rdl", name: "Dumbbell Romanian deadlift", place: "gym", target: "Hamstrings, glutes & back", how: ["Hold dumbbells in front of your thighs", "Push hips back with a flat back and soft knees", "Lower to mid-shin, then stand by squeezing your glutes"] },
-  { id: "leg-press", name: "Leg press", place: "gym", target: "Legs & glutes", how: ["Feet hip-width on the platform", "Lower until knees reach about 90°", "Press away without locking your knees"] },
-  { id: "cable-row", name: "Seated cable row", place: "gym", target: "Upper back & arms", how: ["Sit tall, slight knee bend", "Pull the handle to your stomach, shoulders back", "Return with control"] },
-  { id: "db-press", name: "Dumbbell shoulder press", place: "gym", target: "Shoulders & arms", how: ["Sit or stand tall, dumbbells at shoulder height", "Press overhead, breathing out", "Lower with control"] },
-  { id: "brisk-walk", name: "Brisk walk", place: "any", target: "Heart & lungs", how: ["Walk at a pace where you can talk but not sing", "Swing your arms naturally", "Outdoors, on a treadmill, or march in place"], timed: true },
-  { id: "intervals", name: "Walk–jog intervals", place: "any", target: "Heart & lungs", how: ["1 minute faster (jog, fast walk or bike)", "2 minutes easy", "Repeat"], timed: true },
-  { id: "cat-cow", name: "Cat–cow", place: "any", target: "Spine mobility", how: ["On hands and knees", "Breathe in, drop your belly and lift your chest", "Breathe out, round your back", "Move slowly with your breath"], timed: true },
-  { id: "hip-flexor", name: "Hip flexor stretch", place: "any", target: "Hips", how: ["Kneel on one knee, the other foot forward", "Tuck your hips under and lean gently forward", "Hold, breathing slowly, then switch"], timed: true },
-  { id: "hamstring-stretch", name: "Hamstring stretch", place: "any", target: "Back of legs", how: ["Sit with one leg straight", "Hinge forward from the hips with a long back", "Hold, then switch"], timed: true },
+  { id: "squat", dbId: "Bodyweight_Squat", muscles: ["quadriceps", "glutes"], name: "Bodyweight squat", place: "any", target: "Legs & glutes", how: ["Feet shoulder-width apart, toes slightly out", "Sit hips back and down as if onto a chair", "Keep your chest up and knees over toes", "Push through your heels to stand"], easier: "Squat down to a chair and stand back up" },
+  { id: "pushup", dbId: "Pushups", muscles: ["chest", "triceps", "shoulders"], name: "Push-up", place: "any", target: "Chest, shoulders & arms", how: ["Hands a little wider than shoulders", "Body in one straight line from head to heels", "Lower your chest toward the floor", "Press back up, breathing out"], easier: "Hands on a kitchen counter or wall" },
+  { id: "backpack-row", dbId: "Bent_Over_Two-Dumbbell_Row", muscles: ["middle back", "lats"], name: "Backpack row", place: "any", target: "Upper back & arms", how: ["Fill a backpack with books and hold it by the top handle or straps", "Hinge forward at the hips with a flat back", "Pull the bag toward your lower ribs", "Lower it slowly"], easier: "Use a lighter bag" },
+  { id: "glute-bridge", dbId: "Butt_Lift_Bridge", muscles: ["glutes", "hamstrings"], name: "Glute bridge", place: "any", target: "Glutes & lower back", how: ["Lie on your back, knees bent, feet flat", "Squeeze your glutes and lift your hips", "Pause at the top, ribs down", "Lower slowly"] },
+  { id: "plank", dbId: "Plank", muscles: ["abdominals"], name: "Plank", place: "any", target: "Core", how: ["Forearms under shoulders", "Body straight from head to heels", "Breathe steadily; don't hold your breath"], easier: "Knees on the floor", isometric: true, timed: true },
+  { id: "dead-bug", dbId: "Dead_Bug", muscles: ["abdominals"], name: "Dead bug", place: "any", target: "Core", how: ["Lie on your back, arms up, knees bent at 90°", "Slowly lower the opposite arm and leg", "Keep your lower back pressed to the floor", "Alternate sides, breathing out as you reach"] },
+  { id: "reverse-lunge", dbId: "Split_Squats", muscles: ["quadriceps", "glutes"], name: "Reverse lunge", place: "any", target: "Legs & glutes", how: ["Stand tall, step one foot back", "Lower until both knees are about 90°", "Push through the front heel to return", "Alternate legs"], easier: "Hold a chair for balance" },
+  { id: "step-up", dbId: "Step-up_with_Knee_Raise", muscles: ["quadriceps", "glutes"], name: "Step-up", place: "any", target: "Legs & glutes", how: ["Use a sturdy step or bottom stair", "Step up with one foot, pressing through the heel", "Stand tall at the top", "Step down slowly and switch legs"] },
+  { id: "bird-dog", muscles: ["lower back", "abdominals"], name: "Bird dog", place: "any", target: "Core & back", how: ["On hands and knees", "Reach one arm forward and the opposite leg back", "Keep hips level", "Return and switch sides"] },
+  { id: "goblet-squat", dbId: "Goblet_Squat", muscles: ["quadriceps", "glutes"], name: "Goblet squat", place: "gym", target: "Legs & glutes", how: ["Hold a dumbbell at your chest", "Squat down between your knees, chest up", "Drive up through your heels"] },
+  { id: "db-bench", dbId: "Dumbbell_Bench_Press", muscles: ["chest", "triceps"], name: "Dumbbell bench press", place: "gym", target: "Chest, shoulders & arms", how: ["Lie on a bench, dumbbells over your chest", "Lower them to the sides of your chest", "Press up, breathing out"] },
+  { id: "lat-pulldown", dbId: "Wide-Grip_Lat_Pulldown", muscles: ["lats", "middle back"], name: "Lat pulldown", place: "gym", target: "Back & arms", how: ["Grip the bar just wider than shoulders", "Pull it to your upper chest, elbows down", "Return slowly"] },
+  { id: "rdl", dbId: "Stiff-Legged_Dumbbell_Deadlift", muscles: ["hamstrings", "glutes"], name: "Dumbbell Romanian deadlift", place: "gym", target: "Hamstrings, glutes & back", how: ["Hold dumbbells in front of your thighs", "Push hips back with a flat back and soft knees", "Lower to mid-shin, then stand by squeezing your glutes"] },
+  { id: "leg-press", dbId: "Leg_Press", muscles: ["quadriceps", "glutes"], name: "Leg press", place: "gym", target: "Legs & glutes", how: ["Feet hip-width on the platform", "Lower until knees reach about 90°", "Press away without locking your knees"] },
+  { id: "cable-row", dbId: "Seated_Cable_Rows", muscles: ["middle back", "lats"], name: "Seated cable row", place: "gym", target: "Upper back & arms", how: ["Sit tall, slight knee bend", "Pull the handle to your stomach, shoulders back", "Return with control"] },
+  { id: "db-press", dbId: "Dumbbell_Shoulder_Press", muscles: ["shoulders", "triceps"], name: "Dumbbell shoulder press", place: "gym", target: "Shoulders & arms", how: ["Sit or stand tall, dumbbells at shoulder height", "Press overhead, breathing out", "Lower with control"] },
+  { id: "brisk-walk", dbId: "Walking_Treadmill", name: "Brisk walk", place: "any", target: "Heart & lungs", how: ["Walk at a pace where you can talk but not sing", "Swing your arms naturally", "Outdoors, on a treadmill, or march in place"], timed: true },
+  { id: "intervals", dbId: "Jogging_Treadmill", name: "Walk–jog intervals", place: "any", target: "Heart & lungs", how: ["1 minute faster (jog, fast walk or bike)", "2 minutes easy", "Repeat"], timed: true },
+  { id: "cat-cow", dbId: "Cat_Stretch", name: "Cat–cow", place: "any", target: "Spine mobility", how: ["On hands and knees", "Breathe in, drop your belly and lift your chest", "Breathe out, round your back", "Move slowly with your breath"], timed: true },
+  { id: "hip-flexor", dbId: "Kneeling_Hip_Flexor", name: "Hip flexor stretch", place: "any", target: "Hips", how: ["Kneel on one knee, the other foot forward", "Tuck your hips under and lean gently forward", "Hold, breathing slowly, then switch"], timed: true },
+  { id: "hamstring-stretch", dbId: "Seated_Floor_Hamstring_Stretch", name: "Hamstring stretch", place: "any", target: "Back of legs", how: ["Sit with one leg straight", "Hinge forward from the hips with a long back", "Hold, then switch"], timed: true },
   { id: "open-book", name: "Open-book rotation", place: "any", target: "Upper back", how: ["Lie on your side, knees bent, arms forward", "Open the top arm across to the other side", "Follow your hand with your eyes; return slowly"] },
-  { id: "childs-pose", name: "Child's pose", place: "any", target: "Back & hips", how: ["Kneel, sit back on your heels", "Walk your hands forward and rest your forehead down", "Breathe slowly into your back"], timed: true },
+  { id: "childs-pose", dbId: "Childs_Pose", name: "Child's pose", place: "any", target: "Back & hips", how: ["Kneel, sit back on your heels", "Walk your hands forward and rest your forehead down", "Breathe slowly into your back"], timed: true },
   { id: "box-breathing", name: "Box breathing", place: "any", target: "Calm", how: ["Breathe in for 4", "Hold gently for 4 (skip the holds if you have high blood pressure)", "Breathe out for 4", "Pause for 4, then repeat"], timed: true },
 ] as Exercise[]).map((e) => [e.id, e]));
 

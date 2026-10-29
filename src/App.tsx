@@ -22,6 +22,7 @@ import { ToastProvider } from "@/components/Toast";
 import ProfilePage from "@/pages/ProfilePage";
 import ConditionPage from "@/pages/ConditionPage";
 import WorkoutsPage from "@/pages/WorkoutsPage";
+import ExerciseLibraryPage from "@/pages/ExerciseLibraryPage";
 
 // The shareable demo build keeps routes in memory (no server rewrites needed)
 // and opens straight on the Market. VITE_BASE lets the app live under a
@@ -61,6 +62,7 @@ export default function App() {
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/workouts" element={<WorkoutsPage />} />
+            <Route path="/workouts/library" element={<ExerciseLibraryPage />} />
             <Route path="/health/:id" element={<ConditionPage />} />
             <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -73,7 +75,8 @@ export default function App() {
             <Route path="/market/brand/:slug" element={<BrandPage />} />
             <Route path="/market/listing/:slug" element={<ListingPage />} />
             <Route path="/market/vendor" element={<VendorPortal />} />
-            <Route path="/admin/marketplace" element={<AdminConsole />} />
+            <Route path="/admin" element={<AdminConsole />} />
+            <Route path="/admin/marketplace" element={<AdminConsole start="queue" />} />
             <Route path="*" element={<Placeholder title="Page not found" />} />
           </Route>
         </Routes>

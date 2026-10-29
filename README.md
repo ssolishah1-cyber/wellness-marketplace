@@ -7,7 +7,9 @@ A nutrition tracker with a reviewed wellness marketplace:
 - **Progress**: weight trend, weigh-ins, goal progress and the last 7 days of calories
 - **Profile**: goals, health focus & food preferences, workout settings, privacy settings, sign-in, questions sent to providers
 - **For you** (on Home): guidance for blood sugar, blood pressure, IBS, focus, and stress & sleep, with meal ideas matched to food preferences (`/health/:id`)
-- **Workouts**: a weekly home or gym plan built on the device from level, days per week, weight goal and health focus (`/workouts`)
+- **Workouts**: a weekly home or gym plan built on the device from level, days per week, weight goal and health focus (`/workouts`), with photos and same-muscle swaps
+- **Exercise library**: 700+ exercises with photos from the open-source, public-domain [Free Exercise DB](https://github.com/yuhonas/free-exercise-db), filtered and ranked for each person's level, equipment and health focus (`/workouts/library`)
+- **Admin panel** (`/admin`): totals, users & roles with a change log, review queue, listings, vendors, brands, Market analytics. Admins never see anyone's health data
 - **Market**: TriggerMD and XIMMD as labelled sponsored partners, plus approved businesses; vendor portal and admin review console
 
 Nutrition data is private to each user and is never read by the Market.
@@ -27,7 +29,7 @@ If no Supabase keys are set, the app runs in **demo mode** with sample data. Use
 
 To use a real Supabase project:
 
-1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, `004_lock_down_functions.sql`, `005_onboarding_and_account_deletion.sql` and `006_health_profile_and_workouts.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
+1. Run `supabase/migrations/001_marketplace.sql`, `002_storage_links_expiry.sql` and `003_nutrition.sql`, `004_lock_down_functions.sql`, `005_onboarding_and_account_deletion.sql`, `006_health_profile_and_workouts.sql` and `007_admin_panel.sql`, in that order (or paste `supabase/setup_all.sql` once), in the Supabase SQL editor. Turn on the **pg_cron** extension first if you want listings to expire automatically every night.
 2. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 3. Make yourself an admin:
    `insert into user_roles (user_id, role) values ('<your auth user id>', 'admin');`
@@ -83,6 +85,7 @@ npm run e2e                  # browser test of the full vendor → admin → use
 npm run e2e:nutrition        # browser test of Home, Meals, Progress, Profile
 npm run build:site            # then serve dist-site and run:
 npm run e2e:launch           # setup wizard, legal pages, data download/delete, PWA, sign-in screens
+node tests/e2e-admin.mjs     # exercise library, plan photos and swaps, admin panel
 ```
 
 ## Adding it to the Lovable nutrition app
@@ -122,7 +125,11 @@ supabase/migrations/002_storage_links_expiry.sql  image bucket, link checks, nig
 supabase/migrations/003_nutrition.sql     profiles & goals, food log, water, weight (owner-only)
 supabase/migrations/006_health_profile_and_workouts.sql  health focus (consent required), food prefs, fitness, workout log
 src/lib/nutrition/health.ts               condition guides, today's insight, meal ideas
-src/lib/fitness.ts                        exercise library and weekly plan builder
+src/lib/fitness.ts                        weekly plan builder
+src/lib/exerciseDb.ts, public/exercises.json  open exercise library (scripts/fetch-exercises.mjs) and matching rules
+supabase/migrations/007_admin_panel.sql   admin totals, user list, roles, audit log
+src/lib/admin.ts, src/pages/admin/        admin panel
+docs/HANDOVER.md, docs/WHITE_LABEL.md, docs/WALKTHROUGH_VIDEO.md  handover, client copies, video outline
 src/lib/nutrition/                        nutrition data layer (Supabase + demo), coach and date logic
 src/pages/HomePage.tsx, MealsPage.tsx, ProgressPage.tsx, ProfilePage.tsx
 supabase/functions/notify-inquiry/        email to the business when a user asks a question

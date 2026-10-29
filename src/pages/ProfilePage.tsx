@@ -118,7 +118,7 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
 
       <section className="card grid animate-rise gap-1 p-2 [animation-delay:200ms]">
         <Link to="/market/vendor" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><Store className="h-5 w-5 text-brand-700" /><span className="flex-1"><b className="block text-sm">Advertise your business</b><span className="text-xs text-ink-muted">Apply to list in the Market</span></span></Link>
-        {isStaff && <Link to="/admin/marketplace" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><Shield className="h-5 w-5 text-brand-700" /><span className="flex-1"><b className="block text-sm">Review console</b><span className="text-xs text-ink-muted">Approve listings and vendors</span></span></Link>}
+        {isStaff && <Link to="/admin" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><Shield className="h-5 w-5 text-brand-700" /><span className="flex-1"><b className="block text-sm">Admin panel</b><span className="text-xs text-ink-muted">Users, roles and Market review</span></span></Link>}
         <Link to="/privacy" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Privacy Policy</b></Link>
         <Link to="/terms" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Terms of Use</b></Link>
         <Link to="/support" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Help &amp; support</b></Link>

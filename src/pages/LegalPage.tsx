@@ -51,6 +51,7 @@ export function PrivacyPage() {
       <ul>
         <li>We never sell your personal or health data.</li>
         <li>We never use your meals, weight, goals, health focus or other health data to choose, rank or target marketplace listings or ads.</li>
+        <li>Our team sees only account details (email, sign-up and sign-in dates) and anonymous totals, such as how many people chose a health focus. Totals under 5 are never shown. No one on our team can open your meals, weight, workouts or health focus.</li>
         <li>We never share your health data with marketplace partners, including affiliated partners such as TriggerMD and XIMMD.</li>
       </ul>
 

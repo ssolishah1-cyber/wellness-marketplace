@@ -93,11 +93,11 @@ Not collected: location, contacts, browsing history, advertising data. No tracki
 
 Create a reviewer account (e.g. `appreview@yourcompany.com`), finish the setup screen,
 log a few meals, and give the email/password in App Review Information. Add:
-"Sign in with the demo account. Marketplace listings link to partner websites; no purchases happen in the app."
+"Sign in with the demo account. Marketplace listings link to partner websites; no purchases happen in the app. Health-focus guidance and workouts are general education with sources and 'not medical advice' notices; the optional health focus is saved only after consent. Exercise photos come from the public-domain Free Exercise DB. Sign-in is email and password only, so Sign in with Apple is not required."
 
 ## 8. Screenshots
 
-Needed: iPhone 6.9" (1320 × 2868) and Android phone. Suggested screens: Home, Meals, Progress, Market, a brand page, Profile/Reminders.
+Needed: iPhone 6.9" (1320 × 2868) and Android phone. Suggested screens: Home (For you + today's workout), a condition guide, Workouts, Exercise library, Meals, Progress, Market.
 
 ## 9. Before submitting
 
@@ -106,3 +106,9 @@ Needed: iPhone 6.9" (1320 × 2868) and Android phone. Suggested screens: Home, M
 - [ ] Privacy Policy and Terms approved by a lawyer (`VITE_LEGAL_APPROVED=true`), support email set
 - [ ] Real TriggerMD/XIMMD content and at least a few published listings
 - [ ] Tested on a real iPhone (TestFlight) and Android phone (internal testing)
+- [ ] Supabase migrations 001–007 run (`supabase/setup_all.sql` for a new project)
+- [ ] Publisher decided (POWERVATE LLC recommended) and named in the Privacy Policy and Terms (`VITE_COMPANY_NAME`)
+- [ ] App name trademark check (https://tmsearch.uspto.gov) if renaming, e.g. to Fitologika
+- [ ] Every "Learn more" source link in the condition guides opened once
+- [ ] Google Play: Health apps declaration completed (Policy → App content) and Data safety matches section 6
+- [ ] Google Play (new personal accounts only): 12 testers for 14 days before production. Organization accounts skip this.

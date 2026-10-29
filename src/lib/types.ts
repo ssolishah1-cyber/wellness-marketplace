@@ -123,6 +123,8 @@ export interface Viewer {
   userId: string | null;
   email: string | null;
   isStaff: boolean;
+  /** Admins also manage users and roles; reviewers only handle the Market. */
+  isAdmin: boolean;
 }
 
 export const STATUS_LABEL: Record<ListingStatus, string> = {

@@ -124,3 +124,59 @@ describe("health data in demo mode", () => {
     expect(await n.listWorkouts("2026-10-27", "2026-10-27")).toEqual([]);
   });
 });
+
+describe("open exercise library matching", async () => {
+  const { readFileSync } = await import("fs");
+  const { exerciseFit, rankExercises, alternativesFor } = await import("@/lib/exerciseDb");
+  const db = JSON.parse(readFileSync("public/exercises.json", "utf8")).exercises;
+  const beginnerHome = { fitness_level: "beginner" as const, workout_place: "home" as const, conditions: [] as never[] };
+  it("has the imported dataset with photos", () => {
+    expect(db.length).toBeGreaterThan(600);
+    expect(db.every((e: { images: string[] }) => e.images.length > 0)).toBe(true);
+  });
+  it("keeps beginners at home on beginner, home-equipment moves", () => {
+    const r = rankExercises(db, beginnerHome);
+    expect(r.length).toBeGreaterThan(100);
+    expect(r.every(({ e }) => e.level === "beginner" && !["machine", "cable", "barbell"].includes(e.equipment))).toBe(true);
+  });
+  it("drops static holds and jumping for blood pressure", () => {
+    const p = { fitness_level: "advanced" as const, workout_place: "gym" as const, conditions: ["hypertension"] as never[] };
+    const r = rankExercises(db, p);
+    expect(r.some(({ e }) => e.category === "plyometrics" || (e.force === "static" && e.category === "strength"))).toBe(false);
+    expect(exerciseFit(db.find((e: { id: string }) => e.id === "Plank"), p).ok).toBe(false);
+  });
+  it("puts stretching first for stress & sleep", () => {
+    const r = rankExercises(db, { ...beginnerHome, conditions: ["relaxation"] as never[] });
+    expect(r.slice(0, 10).every(({ e }) => e.category === "stretching")).toBe(true);
+  });
+  it("finds same-muscle swaps for plan exercises", () => {
+    const alts = alternativesFor(db, ["chest", "triceps"], "Pushups", beginnerHome);
+    expect(alts.length).toBe(3);
+    expect(alts.every(({ e }) => e.id !== "Pushups" && e.primaryMuscles.some((m: string) => ["chest", "triceps"].includes(m)))).toBe(true);
+  });
+  it("links every plan exercise photo to a real dataset entry", async () => {
+    const { EXERCISES } = await import("@/lib/fitness");
+    const ids = new Set(db.map((e: { id: string }) => e.id));
+    for (const e of Object.values(EXERCISES)) if (e.dbId) expect(ids.has(e.dbId), e.id).toBe(true);
+  });
+});
+
+describe("admin panel (demo)", () => {
+  it("is admin-only, protects your own admin role, and logs role changes", async () => {
+    const { admin } = await import("@/lib/admin");
+    setDemoPersona("member");
+    await expect(admin.stats()).rejects.toThrow(/Admins only/);
+    await expect(admin.listUsers("")).rejects.toThrow(/Admins only/);
+    setDemoPersona("admin");
+    const s = await admin.stats();
+    expect(s.total_users).toBeGreaterThan(3);
+    expect(s.signups_by_day).toHaveLength(30);
+    const users = await admin.listUsers("jamie");
+    expect(users).toHaveLength(1);
+    expect(Object.keys(users[0])).not.toContain("conditions");
+    await admin.setRole(users[0].user_id, "reviewer", true);
+    expect((await admin.listUsers("jamie"))[0].roles).toEqual(["reviewer"]);
+    await expect(admin.setRole("user-admin", "admin", false)).rejects.toThrow(/own admin/);
+    expect((await admin.auditLog())[0]).toMatchObject({ action: "grant_role", details: { role: "reviewer" } });
+  });
+});

@@ -8,35 +8,43 @@ import {
 } from "@/lib/types";
 import ListingForm from "@/components/ListingForm";
 import ClicksChart from "./ClicksChart";
+import AdminOverview from "./AdminOverview";
+import AdminUsers from "./AdminUsers";
 import ImageUpload from "@/components/ImageUpload";
 import { EmptyState, ErrorNote, Field, Spinner, SponsoredBadge, StatusBadge, formatPrice, useCategories, useViewer } from "@/components/ui";
 
-type Tab = "queue" | "listings" | "vendors" | "brands" | "analytics";
-const TABS: { id: Tab; label: string }[] = [
+type Tab = "overview" | "users" | "queue" | "listings" | "vendors" | "brands" | "analytics";
+const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
+  { id: "overview", label: "Overview", adminOnly: true },
+  { id: "users", label: "Users & roles", adminOnly: true },
   { id: "queue", label: "Review queue" },
   { id: "listings", label: "All listings" },
   { id: "vendors", label: "Vendors" },
   { id: "brands", label: "Brands" },
-  { id: "analytics", label: "Analytics" },
+  { id: "analytics", label: "Market analytics" },
 ];
 
-export default function AdminConsole() {
+export default function AdminConsole({ start }: { start?: Tab }) {
   const { data: viewer, isLoading } = useViewer();
-  const [tab, setTab] = useState<Tab>("queue");
+  const [picked, setTab] = useState<Tab | null>(start ?? null);
   if (isLoading) return <Spinner />;
-  if (!viewer?.isStaff) return <EmptyState title="Reviewers only">You need the admin or reviewer role to open the review console.</EmptyState>;
+  if (!viewer?.isStaff) return <EmptyState title="Admins and reviewers only">You need the admin or reviewer role to open the admin panel.</EmptyState>;
+  const tabs = TABS.filter((t) => !t.adminOnly || viewer.isAdmin);
+  const tab = picked && tabs.some((t) => t.id === picked) ? picked : tabs[0].id;
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Marketplace review console</h1>
+      <h1 className="text-xl font-bold">{viewer.isAdmin ? "Admin panel" : "Marketplace review console"}</h1>
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm ${tab === t.id ? "border-brand-600 font-semibold text-brand-700" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
             {t.label}
           </button>
         ))}
       </div>
+      {tab === "overview" && <AdminOverview onOpenQueue={() => setTab("queue")} />}
+      {tab === "users" && viewer.userId && <AdminUsers myId={viewer.userId} />}
       {tab === "queue" && <ListingsTab status="pending_review" />}
       {tab === "listings" && <ListingsTab />}
       {tab === "vendors" && <VendorsTab />}

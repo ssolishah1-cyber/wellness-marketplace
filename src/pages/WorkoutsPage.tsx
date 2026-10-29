@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronDown, Clock, Dumbbell, HeartPulse, Info, SlidersHorizontal, Wind } from "lucide-react";
-import { isoDay, nutrition, weekOf } from "@/lib/nutrition";
+import { ArrowLeft, Check, ChevronDown, ChevronRight, Clock, Dumbbell, HeartPulse, Info, Library, SlidersHorizontal, Wind } from "lucide-react";
+import { isoDay, nutrition, weekOf, type Profile } from "@/lib/nutrition";
+import { alternativesFor, type DbExercise } from "@/lib/exerciseDb";
+import { ExercisePhoto, ExercisePhotos, ExerciseSheet, useExerciseDb } from "@/components/exercises";
 import { LEVEL_LABEL, PLACE_LABEL, weekdayOf, weeklyPlan, type Session } from "@/lib/fitness";
 import { SignInPrompt, useProfile, useWorkouts } from "@/components/nutrition";
 import { Spinner, useViewer } from "@/components/ui";
@@ -63,13 +65,19 @@ export default function WorkoutsPage() {
       </section>
 
       {day.session
-        ? <SessionCard key={`${selected}-${day.session.id}`} session={day.session} day={week[selected]} done={done.has(`${week[selected]}|${day.session.id}`)} future={week[selected] > today} />
+        ? <SessionCard key={`${selected}-${day.session.id}`} session={day.session} day={week[selected]} done={done.has(`${week[selected]}|${day.session.id}`)} future={week[selected] > today} profile={p} />
         : (
           <section className="card animate-rise p-5 text-center">
             <h2 className="text-lg font-bold">Rest day</h2>
             <p className="mt-1 text-sm text-ink-2">Recovery is part of the plan. A relaxed walk or some gentle stretching is still a good idea.</p>
           </section>
         )}
+
+      <Link to="/workouts/library" className="card flex items-center gap-3 p-4 transition hover:border-brand-600">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-700 text-white"><Library className="h-5 w-5" /></span>
+        <span className="flex-1"><b className="block">Exercise library</b><span className="text-xs text-ink-muted">700+ exercises with photos, matched to your level, place and health focus</span></span>
+        <ChevronRight className="h-5 w-5 text-ink-muted" />
+      </Link>
 
       <p className="flex gap-2 rounded-2xl bg-[#e8eee7] p-4 text-xs text-ink-2">
         <Info className="h-4 w-4 shrink-0" /> Check with your doctor before starting a new exercise plan, especially if you have a heart condition, diabetes, high blood pressure or are pregnant. Stop and seek help if you feel chest pain, severe breathlessness or dizziness.
@@ -78,7 +86,7 @@ export default function WorkoutsPage() {
   );
 }
 
-function SessionCard({ session: s, day, done, future }: { session: Session; day: string; done: boolean; future: boolean }) {
+function SessionCard({ session: s, day, done, future, profile }: { session: Session; day: string; done: boolean; future: boolean; profile: Profile }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [open, setOpen] = useState<string | null>(null);
@@ -112,9 +120,11 @@ function SessionCard({ session: s, day, done, future }: { session: Session; day:
               <ChevronDown className={`h-4 w-4 shrink-0 text-ink-muted transition ${open === e.id ? "rotate-180" : ""}`} />
             </button>
             {open === e.id && (
-              <div className="grid gap-1.5 border-t border-[#d8e2d9] p-3 text-sm text-ink-2">
+              <div className="grid gap-2.5 border-t border-[#d8e2d9] p-3 text-sm text-ink-2">
+                {e.dbId && <ExercisePhotos images={[`${e.dbId}/0.jpg`, `${e.dbId}/1.jpg`]} name={e.name} />}
                 <ol className="list-decimal space-y-1 pl-5">{e.how.map((h) => <li key={h}>{h}</li>)}</ol>
                 {e.easier && <p className="text-xs"><b>Easier:</b> {e.easier}</p>}
+                {e.muscles && <Alternatives muscles={e.muscles} excludeId={e.dbId} profile={profile} />}
               </div>
             )}
           </li>
@@ -126,5 +136,26 @@ function SessionCard({ session: s, day, done, future }: { session: Session; day:
         ? <button className="btn-outline" disabled={mark.isPending} onClick={() => mark.mutate(null)}><Check className="h-4 w-4 text-brand-600" /> Done · tap to undo</button>
         : <button className="btn-primary" disabled={mark.isPending || future} onClick={() => mark.mutate(s.minutes)}>{future ? "Coming up" : <><Check className="h-4 w-4" /> Mark as done</>}</button>}
     </section>
+  );
+}
+
+function Alternatives({ muscles, excludeId, profile }: { muscles: string[]; excludeId?: string; profile: Profile }) {
+  const db = useExerciseDb();
+  const [shown, setShown] = useState<{ e: DbExercise; why: string[] } | null>(null);
+  if (!db.data) return db.isError ? null : <p className="text-xs text-ink-muted">Loading alternatives…</p>;
+  const alts = alternativesFor(db.data, muscles, excludeId, profile);
+  if (!alts.length) return null;
+  return (
+    <div className="grid gap-1.5">
+      <span className="text-xs font-semibold text-ink">Swap for a similar exercise</span>
+      {alts.map(({ e, fit }) => (
+        <button key={e.id} type="button" onClick={() => setShown({ e, why: fit.why })} className="flex items-center gap-2.5 rounded-xl border border-[#d8e2d9] p-1.5 text-left hover:border-brand-600">
+          <ExercisePhoto path={e.images[0]} alt="" className="h-10 w-12 shrink-0 rounded-lg" />
+          <span className="flex-1 text-[13px] font-semibold">{e.name}</span>
+          <ChevronRight className="h-4 w-4 text-ink-muted" />
+        </button>
+      ))}
+      {shown && <ExerciseSheet exercise={shown.e} why={shown.why} onClose={() => setShown(null)} />}
+    </div>
   );
 }

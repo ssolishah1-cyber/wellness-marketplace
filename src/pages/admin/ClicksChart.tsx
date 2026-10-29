@@ -4,9 +4,9 @@ interface Point { day: string; value: number }
 
 // Single-series bar chart: one hue, thin bars with rounded tops, recessive
 // grid, per-bar hover tooltip. The table below it is the accessible view.
-export default function ClicksChart({ data }: { data: Point[] }) {
+export default function ClicksChart({ data, empty = "No clicks recorded yet.", unit = "clicks" }: { data: Point[]; empty?: string; unit?: string }) {
   const [hover, setHover] = useState<number | null>(null);
-  if (!data.length) return <p className="text-sm text-slate-500">No clicks recorded yet.</p>;
+  if (!data.length) return <p className="text-sm text-slate-500">{empty}</p>;
 
   const W = 640, H = 200, padL = 32, padB = 22, padT = 8;
   const max = Math.max(...data.map((d) => d.value), 1);
@@ -20,7 +20,7 @@ export default function ClicksChart({ data }: { data: Point[] }) {
 
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Outbound clicks per day">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`${unit} per day`}>
         {ticks.map((t) => (
           <g key={t}>
             <line x1={padL} x2={W} y1={y(t)} y2={y(t)} stroke="#e2e8f0" strokeWidth={1} />
@@ -51,7 +51,7 @@ export default function ClicksChart({ data }: { data: Point[] }) {
       {hover !== null && (
         <div className="pointer-events-none absolute top-0 rounded-lg bg-slate-900 px-2 py-1 text-xs text-white shadow"
           style={{ left: `${((padL + hover * slot + slot / 2) / W) * 100}%`, transform: "translateX(-50%)" }}>
-          {label(data[hover].day)}: <b>{data[hover].value}</b> clicks
+          {label(data[hover].day)}: <b>{data[hover].value}</b> {unit}
         </div>
       )}
     </div>

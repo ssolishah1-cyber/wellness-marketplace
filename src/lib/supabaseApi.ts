@@ -14,9 +14,12 @@ export function supabaseApi(sb: SupabaseClient): MarketApi {
     async getViewer() {
       const { data } = await sb.auth.getUser();
       const user = data.user;
-      if (!user) return { userId: null, email: null, isStaff: false };
-      const { data: isStaff } = await sb.rpc("is_marketplace_staff", { _user_id: user.id });
-      return { userId: user.id, email: user.email ?? null, isStaff: Boolean(isStaff) };
+      if (!user) return { userId: null, email: null, isStaff: false, isAdmin: false };
+      const [{ data: isStaff }, { data: isAdmin }] = await Promise.all([
+        sb.rpc("is_marketplace_staff", { _user_id: user.id }),
+        sb.rpc("has_role", { _user_id: user.id, _role: "admin" }),
+      ]);
+      return { userId: user.id, email: user.email ?? null, isStaff: Boolean(isStaff), isAdmin: Boolean(isAdmin) };
     },
 
     async listCategories() {

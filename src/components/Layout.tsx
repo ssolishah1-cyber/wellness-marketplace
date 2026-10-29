@@ -57,7 +57,7 @@ export default function Layout() {
               <NavLink to="/market/vendor" className="btn-outline px-3 py-1.5 text-xs"><Store className="h-3.5 w-3.5" /> Vendor portal</NavLink>
             )}
             {viewer?.isStaff && (
-              <NavLink to="/admin/marketplace" className="btn-outline px-3 py-1.5 text-xs"><Shield className="h-3.5 w-3.5" /> Review console</NavLink>
+              <NavLink to="/admin" className="btn-outline px-3 py-1.5 text-xs"><Shield className="h-3.5 w-3.5" /> {viewer.isAdmin ? "Admin" : "Review console"}</NavLink>
             )}
           </div>
         </div>

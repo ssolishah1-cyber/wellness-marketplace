@@ -53,9 +53,9 @@ export function getDemoUserId(): string | null {
 }
 
 function viewer(): Viewer {
-  if (persona === "visitor") return { userId: null, email: null, isStaff: false };
+  if (persona === "visitor") return { userId: null, email: null, isStaff: false, isAdmin: false };
   const u = DEMO_USERS[persona];
-  return { userId: u.id, email: u.email, isStaff: persona === "admin" };
+  return { userId: u.id, email: u.email, isStaff: persona === "admin", isAdmin: persona === "admin" };
 }
 
 function isLive(l: Listing) {
