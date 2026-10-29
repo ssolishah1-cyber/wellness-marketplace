@@ -97,6 +97,7 @@ bannerTitles.some((t) => t.includes("Spring wellness challenge")) ? ok("new bann
 await p.screenshot({ path: `${OUT}/m1-market-ads.png`, fullPage: true });
 await p.locator('a[href="/app/market/category/fitness"]').first().click(); await p.waitForTimeout(900);
 (await p.getByText("Category sponsor").count()) && (await p.getByText("Train at home, no gym needed").count()) ? ok("category sponsor shown on Fitness") : fail("no category sponsor");
+(await p.getByText("Free in this app").count()) && (await p.getByRole("link", { name: /Exercise library/ }).count()) ? ok("Fitness links to the app's workouts and exercise library") : fail("no in-app fitness links");
 await p.screenshot({ path: `${OUT}/m2-category-sponsor.png`, fullPage: true });
 await p.locator('header a[href="/app/admin"]').click(); await p.waitForTimeout(800);
 

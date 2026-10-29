@@ -1,13 +1,30 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { LISTING_TYPES, type ListingType } from "@/lib/types";
 import { CategoryIcon, EmptyState, ListingCard, SkeletonGrid, useCategories } from "@/components/ui";
 import { CategorySponsor, FeaturedSlot, useLiveAds } from "@/components/ads";
 
 type Sort = "newest" | "price_asc" | "price_desc";
+
+// Free features inside the app that belong in a Market category.
+const IN_APP: Record<string, { to: string; title: string; text: string }[]> = {
+  fitness: [
+    { to: "/workouts", title: "Your weekly workout plan", text: "Home or gym, matched to your level and health focus" },
+    { to: "/workouts/library", title: "Exercise library", text: "700+ exercises with photos, from the open-source Free Exercise DB" },
+  ],
+  "weight-management": [
+    { to: "/health/weight_loss", title: "Weight loss guide", text: "What to eat more of, what to limit, daily habits and meal ideas" },
+    { to: "/workouts", title: "Your weekly workout plan", text: "Extra cardio time when your goal is weight loss" },
+  ],
+  "books-education": [
+    { to: "/health/diabetes", title: "Blood sugar guide", text: "Plate method, carbs and habits, with sources" },
+    { to: "/health/hypertension", title: "Blood pressure guide", text: "The DASH pattern, salt and potassium" },
+    { to: "/health/heart_health", title: "Heart health guide", text: "Fiber, healthy fats and cholesterol" },
+  ],
+};
 
 export default function CategoryPage() {
   const { slug } = useParams();
@@ -55,6 +72,19 @@ export default function CategoryPage() {
         </div>
       )}
       {sponsor && <CategorySponsor ad={sponsor} />}
+      {slug && IN_APP[slug] && (
+        <section aria-label="Free in this app" className="grid gap-2">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-brand-700"><Sparkles className="h-4 w-4" /> Free in this app</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {IN_APP[slug].map((x) => (
+              <Link key={x.to} to={x.to} className="card flex items-center gap-3 p-3 transition hover:border-brand-500">
+                <span className="min-w-0 flex-1"><b className="block text-sm">{x.title}</b><span className="text-xs text-slate-500">{x.text}</span></span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="flex flex-wrap gap-2">
         <select className="input w-auto" value={type} onChange={(e) => setType(e.target.value as ListingType | "")}>
           <option value="">All types</option>
