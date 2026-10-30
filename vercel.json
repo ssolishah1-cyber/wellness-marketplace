@@ -4,13 +4,12 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build:site",
   "outputDirectory": "dist-site",
-  "cleanUrls": true,
   "redirects": [
     { "source": "/", "destination": "/app", "permanent": false },
     { "source": "/demo", "destination": "/preview/demo", "permanent": false }
   ],
   "rewrites": [
-    { "source": "/app/:path*", "destination": "/app" }
+    { "source": "/app/:path*", "destination": "/app/index.html" }
   ],
   "headers": [
     {
