@@ -59,7 +59,7 @@ Then go to Dashboard → Database → Webhooks and add a webhook on **INSERT** i
 
 In Supabase → Authentication → URL Configuration, set the Site URL to `https://<your-site>/app` and add `https://<your-site>/app/**` to Redirect URLs, so sign-up and password-reset links return to the app.
 
-Optional Vercel variables: `VITE_COMPANY_NAME` and `VITE_SUPPORT_EMAIL` fill in the Privacy Policy and Terms; set `VITE_LEGAL_APPROVED=true` once a lawyer has approved them to remove the draft banner.
+The company in the Privacy Policy and Terms comes from `companyName` in `app.config.json` (POWERVATE LLC; a `VITE_COMPANY_NAME` variable overrides it). Set `VITE_SUPPORT_EMAIL` in Vercel and Codemagic for the support address; set `VITE_LEGAL_APPROVED=true` once a lawyer has approved them to remove the draft banner.
 
 The app is installable (PWA): `public/manifest.webmanifest`, icons in `public/icons/`, and `public/sw.js`, which caches only the app's static files and never Supabase responses. `/app` is served with a strict Content-Security-Policy (see `vercel.json`).
 

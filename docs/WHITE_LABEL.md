@@ -20,7 +20,7 @@ Rough effort once a client has their accounts ready: half a day of setup plus st
    - Edit the partner brands at the end of `001_marketplace.sql` before running, or change them later in Admin → Brands.
    - Authentication → URL Configuration: Site URL `https://<client-site>/app`, Redirect URLs `https://<client-site>/app/**` and `<client-app-id>://**`.
 3. **Branding in code.**
-   - `app.config.json`: `appName` and `appId` (for example `com.clientbrand.app`; **permanent** after the first upload).
+   - `app.config.json`: `appName`, `appId` and `companyName` (the client's legal company) (for example `com.clientbrand.app`; **permanent** after the first upload).
    - `public/manifest.webmanifest` and `index.html`: name and title.
    - `tailwind.config.js`: the `brand` colour scale.
    - `assets/`: replace the icon and splash images, then run `npx @capacitor/assets generate`.

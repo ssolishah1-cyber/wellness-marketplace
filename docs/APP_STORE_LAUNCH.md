@@ -107,7 +107,7 @@ Needed: iPhone 6.9" (1320 × 2868) and Android phone. Suggested screens: Home (F
 - [ ] Real TriggerMD/XIMMD content and at least a few published listings
 - [ ] Tested on a real iPhone (TestFlight) and Android phone (internal testing)
 - [ ] Supabase migrations 001–008 run (`supabase/setup_all.sql` for a new project)
-- [ ] Publisher decided (POWERVATE LLC recommended) and named in the Privacy Policy and Terms (`VITE_COMPANY_NAME`)
+- [x] Publisher: **POWERVATE LLC** (`companyName` in `app.config.json`, shown in the Privacy Policy and Terms)
 - [ ] App name trademark check (https://tmsearch.uspto.gov) if renaming, e.g. to Fitologika
 - [ ] Every "Learn more" source link in the condition guides opened once
 - [ ] Google Play: Health apps declaration completed (Policy → App content) and Data safety matches section 6

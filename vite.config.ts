@@ -44,6 +44,8 @@ export default defineConfig(({ mode }) => {
       // Native builds: deep links back into the app use the app ID as URL scheme.
       "import.meta.env.VITE_APP_ID": JSON.stringify(appConfig.appId),
       "import.meta.env.VITE_APP_NAME": JSON.stringify(env.VITE_APP_NAME || appConfig.appName),
+      // Legal entity shown in the Privacy Policy and Terms (publisher in the stores).
+      "import.meta.env.VITE_COMPANY_NAME": JSON.stringify(env.VITE_COMPANY_NAME || appConfig.companyName),
     },
   };
 });
