@@ -53,6 +53,7 @@ export default function AdminUsers({ myId }: { myId: string }) {
 
   return (
     <div className="space-y-4">
+      <InviteForm />
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); setTerm(search); setPage(0); }}>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -109,5 +110,47 @@ export default function AdminUsers({ myId }: { myId: string }) {
         ) : <p className="mt-1 text-sm text-slate-500">No admin activity yet.</p>}
       </div>
     </div>
+  );
+}
+
+function InviteForm() {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<Role>("admin");
+  const invites = useQuery({ queryKey: ["admin-invites"], queryFn: () => admin.listInvites() });
+  const send = useMutation({
+    mutationFn: () => admin.invite(email, role),
+    onSuccess: async (r) => {
+      toast(r === "granted" ? `${email} is now ${role === "admin" ? "an admin" : "a reviewer"}` : `${email} will become ${role === "admin" ? "an admin" : "a reviewer"} after signing up`);
+      setEmail("");
+      await Promise.all(["admin-invites", "admin-users", "admin-audit"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
+    },
+  });
+  const cancel = useMutation({ mutationFn: (e: string) => admin.cancelInvite(e), onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-invites"] }) });
+  return (
+    <section className="card grid gap-2 p-4">
+      <h2 className="font-semibold">Give someone access</h2>
+      <p className="text-xs text-slate-500">Enter their email. If they already have an account they get access now; otherwise as soon as they sign up at <b>/app/signup</b> and confirm their email.</p>
+      <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); send.mutate(); }}>
+        <input id="invite-email" className="input min-w-0 flex-1" type="email" required placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <select id="invite-role" className="input w-auto" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+          <option value="admin">Admin</option>
+          <option value="reviewer">Reviewer</option>
+        </select>
+        <button className="btn-primary" disabled={send.isPending}>Give access</button>
+      </form>
+      <ErrorNote error={send.error ?? cancel.error} />
+      {invites.data?.length ? (
+        <ul className="divide-y divide-slate-100 text-sm">
+          {invites.data.map((i) => (
+            <li key={i.email} className="flex items-center justify-between gap-2 py-1.5">
+              <span>{i.email} · <span className="capitalize">{i.role}</span> <span className="text-xs text-slate-500">(waiting for sign-up)</span></span>
+              <button type="button" className="text-xs font-semibold text-rose-700" onClick={() => cancel.mutate(i.email)}>Cancel</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }

@@ -24,8 +24,8 @@ textarea { width:100%; box-sizing:border-box; min-height:360px; font-family:var(
 </style>
 <main>
   <div>
-    <h1>Supabase update: ads, client view &amp; new health options</h1>
-    <p class="lead">Adds Market ads with view and click counts, the admin client view (every view logged), and the weight loss, heart health and general wellness options. Safe to run more than once.</p>
+    <h1>Supabase update: articles &amp; access for Ben</h1>
+    <p class="lead">Adds twice-a-week articles (with 4 draft articles to review), giving access by email, and pre-approves bniben60@gmail.com as admin. Safe to run more than once.</p>
   </div>
   <section class="panel">
     <div class="actions">
@@ -39,165 +39,156 @@ textarea { width:100%; box-sizing:border-box; min-height:360px; font-family:var(
       <li>Delete anything already in the editor, paste, and click <b>Run</b>. It should finish with “Success. No rows returned”.</li>
     </ol>
   </section>
-  <label for="sql" class="meta">Script · 158 lines · migration 008</label>
+  <label for="sql" class="meta">Script · 149 lines · migration 010</label>
   <textarea id="sql" readonly spellcheck="false">-- =====================================================================
--- Market ads, admin client view, and three more health focus options.
--- Run after 007.
+-- Role invites and educational articles. Run after 009.
 --
--- Client data: admins can open an individual client&#x27;s profile, logs and
--- health focus to support them. Users are told this at sign-up and in the
--- Privacy Policy, and every view is recorded in admin_audit_log.
--- Reviewers (Market only) never get client data.
+-- Invites: an admin pre-approves an email for a role. The role is granted
+-- automatically once that person signs up AND confirms their email, so an
+-- unconfirmed sign-up with someone else&#x27;s address gets nothing.
 --
--- Ads: always labelled Sponsored in the app, placed by staff, and never
--- targeted with health data (placement and category only).
+-- Articles: staff write and schedule short educational articles (Ben&#x27;s
+-- plan: two a week). Published articles are public; reads are counted as
+-- anonymous daily totals.
 -- =====================================================================
 
--- ---------- Health focus: weight loss, heart health, general wellness ----------
-alter table public.profiles drop constraint if exists profiles_conditions_known;
-alter table public.profiles add constraint profiles_conditions_known
-  check (conditions &lt;@ array[&#x27;diabetes&#x27;, &#x27;hypertension&#x27;, &#x27;ibs&#x27;, &#x27;focus&#x27;, &#x27;relaxation&#x27;, &#x27;weight_loss&#x27;, &#x27;heart_health&#x27;, &#x27;general_wellness&#x27;]::text[]);
+-- ---------- Role invites ----------
+create table if not exists public.role_invites (
+  email text primary key check (email = lower(email) and email ~ &#x27;^[^@\s]+@[^@\s]+\.[^@\s]+$&#x27;),
+  role public.app_role not null,
+  invited_by uuid references auth.users(id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now()
+);
+alter table public.role_invites enable row level security;
+drop policy if exists &quot;admins manage invites&quot; on public.role_invites;
+create policy &quot;admins manage invites&quot; on public.role_invites for all to authenticated
+  using (public.has_role(auth.uid(), &#x27;admin&#x27;)) with check (public.has_role(auth.uid(), &#x27;admin&#x27;));
+revoke all on public.role_invites from anon;
 
--- ---------- Ads ----------
-do $$ begin
-  create type public.ad_kind as enum (&#x27;featured_listing&#x27;, &#x27;home_banner&#x27;, &#x27;category_sponsor&#x27;);
-exception when duplicate_object then null; end $$;
+create or replace function public.apply_role_invite()
+returns trigger language plpgsql security definer set search_path = public, auth as $$
+declare inv public.role_invites;
+begin
+  if new.email_confirmed_at is null then return new; end if;
+  select * into inv from public.role_invites where email = lower(new.email);
+  if found then
+    insert into public.user_roles (user_id, role) values (new.id, inv.role) on conflict do nothing;
+    insert into public.admin_audit_log (actor_id, action, target_user_id, details)
+    values (inv.invited_by, &#x27;grant_role&#x27;, new.id, jsonb_build_object(&#x27;role&#x27;, inv.role, &#x27;via&#x27;, &#x27;invite&#x27;));
+    delete from public.role_invites where email = inv.email;
+  end if;
+  return new;
+end $$;
+revoke execute on function public.apply_role_invite() from public, anon, authenticated;
 
-create table if not exists public.marketplace_ads (
+drop trigger if exists on_auth_user_confirmed_invite on auth.users;
+create trigger on_auth_user_confirmed_invite
+  after insert or update of email_confirmed_at on auth.users
+  for each row execute function public.apply_role_invite();
+
+-- Invites for people who already have a confirmed account apply at once.
+create or replace function public.admin_invite(_email text, _role public.app_role)
+returns text language plpgsql security definer set search_path = public, auth as $$
+declare uid uuid; e text := lower(trim(_email));
+begin
+  perform public.require_admin();
+  select id into uid from auth.users where lower(email) = e and email_confirmed_at is not null;
+  if uid is not null then
+    insert into public.user_roles (user_id, role) values (uid, _role) on conflict do nothing;
+    insert into public.admin_audit_log (actor_id, action, target_user_id, details)
+    values (auth.uid(), &#x27;grant_role&#x27;, uid, jsonb_build_object(&#x27;role&#x27;, _role));
+    return &#x27;granted&#x27;;
+  end if;
+  insert into public.role_invites (email, role) values (e, _role)
+  on conflict (email) do update set role = excluded.role, invited_by = auth.uid(), created_at = now();
+  return &#x27;invited&#x27;;
+end $$;
+revoke execute on function public.admin_invite(text, public.app_role) from public, anon;
+grant execute on function public.admin_invite(text, public.app_role) to authenticated;
+
+-- Existing audit actions plus &#x27;grant_role&#x27; via invite need no schema change.
+
+-- ---------- Articles ----------
+create table if not exists public.articles (
   id uuid primary key default gen_random_uuid(),
-  kind public.ad_kind not null,
-  title text not null check (char_length(title) between 1 and 80),
-  body text check (char_length(body) &lt;= 160),
-  image_url text check (image_url is null or image_url ~* &#x27;^https?://&#x27;),
-  listing_id uuid references public.marketplace_listings(id) on delete cascade,
-  brand_id uuid references public.marketplace_brands(id) on delete cascade,
-  category_id uuid references public.marketplace_categories(id) on delete cascade,
-  link_url text check (link_url is null or link_url ~* &#x27;^https?://&#x27;),
-  advertiser text not null check (char_length(advertiser) between 1 and 120),
-  vendor_id uuid references public.marketplace_vendors(id) on delete set null,
-  starts_at timestamptz not null default now(),
-  ends_at timestamptz,
-  is_active boolean not null default true,
-  priority int not null default 0,
-  -- Billing (staff only; online checkout can fill these later).
-  price_cents int check (price_cents is null or price_cents &gt;= 0),
-  payment_status text not null default &#x27;unpaid&#x27; check (payment_status in (&#x27;unpaid&#x27;, &#x27;invoiced&#x27;, &#x27;paid&#x27;, &#x27;complimentary&#x27;)),
-  notes text,
+  slug text not null unique check (slug ~ &#x27;^[a-z0-9-]{3,80}$&#x27;),
+  title text not null check (char_length(title) between 3 and 120),
+  summary text check (char_length(summary) &lt;= 240),
+  body text not null default &#x27;&#x27; check (char_length(body) &lt;= 20000),
+  cover_image_url text check (cover_image_url is null or cover_image_url ~* &#x27;^https?://&#x27;),
+  conditions text[] not null default &#x27;{}&#x27;,
+  author_name text check (char_length(author_name) &lt;= 80),
+  is_published boolean not null default false,
+  publish_at timestamptz not null default now(),
   created_by uuid references auth.users(id) on delete set null default auth.uid(),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  check (ends_at is null or ends_at &gt; starts_at),
-  -- Every ad has somewhere to go.
-  check (listing_id is not null or brand_id is not null or link_url is not null),
-  check (kind &lt;&gt; &#x27;featured_listing&#x27; or listing_id is not null),
-  check (kind &lt;&gt; &#x27;category_sponsor&#x27; or category_id is not null),
-  check (kind &lt;&gt; &#x27;home_banner&#x27; or image_url is not null)
+  updated_at timestamptz not null default now()
 );
-create index if not exists marketplace_ads_live on public.marketplace_ads (kind, is_active, starts_at, ends_at);
-
-drop trigger if exists trg_ads_updated on public.marketplace_ads;
-create trigger trg_ads_updated before update on public.marketplace_ads
+create index if not exists articles_feed on public.articles (is_published, publish_at desc);
+drop trigger if exists trg_articles_updated on public.articles;
+create trigger trg_articles_updated before update on public.articles
   for each row execute function public.set_updated_at();
 
-create table if not exists public.marketplace_ad_stats (
-  ad_id uuid not null references public.marketplace_ads(id) on delete cascade,
+create table if not exists public.article_stats (
+  article_id uuid not null references public.articles(id) on delete cascade,
   day date not null default current_date,
-  views int not null default 0,
-  clicks int not null default 0,
-  primary key (ad_id, day)
+  reads int not null default 0,
+  primary key (article_id, day)
 );
 
-alter table public.marketplace_ads enable row level security;
-alter table public.marketplace_ad_stats enable row level security;
-drop policy if exists &quot;staff manage ads&quot; on public.marketplace_ads;
-create policy &quot;staff manage ads&quot; on public.marketplace_ads for all to authenticated
+alter table public.articles enable row level security;
+alter table public.article_stats enable row level security;
+drop policy if exists &quot;read published articles&quot; on public.articles;
+create policy &quot;read published articles&quot; on public.articles for select
+  using (is_published and publish_at &lt;= now());
+drop policy if exists &quot;staff manage articles&quot; on public.articles;
+create policy &quot;staff manage articles&quot; on public.articles for all to authenticated
   using (public.is_marketplace_staff(auth.uid())) with check (public.is_marketplace_staff(auth.uid()));
-drop policy if exists &quot;staff read ad stats&quot; on public.marketplace_ad_stats;
-create policy &quot;staff read ad stats&quot; on public.marketplace_ad_stats for select to authenticated
+drop policy if exists &quot;staff read article stats&quot; on public.article_stats;
+create policy &quot;staff read article stats&quot; on public.article_stats for select to authenticated
   using (public.is_marketplace_staff(auth.uid()));
-revoke all on public.marketplace_ads, public.marketplace_ad_stats from anon;
+grant select on public.articles to anon, authenticated;
+revoke all on public.article_stats from anon;
 
--- Live ads for the app: public fields only (no price, payment or notes).
--- A featured listing only shows while its listing is published.
-drop function if exists public.list_live_ads() cascade;
-create or replace function public.list_live_ads()
-returns table (id uuid, kind public.ad_kind, title text, body text, image_url text, listing_id uuid, listing_slug text, brand_id uuid, brand_slug text, category_id uuid, link_url text, advertiser text, priority int)
-language sql stable security definer set search_path = public as $$
-  select a.id, a.kind, a.title, a.body, a.image_url, a.listing_id, l.slug, a.brand_id, b.slug, a.category_id, a.link_url, a.advertiser, a.priority
-  from public.marketplace_ads a
-  left join public.marketplace_listings l on l.id = a.listing_id
-  left join public.marketplace_brands b on b.id = a.brand_id
-  where a.is_active and a.starts_at &lt;= now() and (a.ends_at is null or a.ends_at &gt; now())
-    and (a.listing_id is null or (l.status = &#x27;published&#x27; and (l.expires_at is null or l.expires_at &gt; now())))
-    and (a.brand_id is null or b.is_active)
-  order by a.priority desc, a.starts_at desc
-$$;
-
--- Anonymous daily totals only, and only for live ads.
-create or replace function public.record_ad_event(_ad_id uuid, _event text)
+create or replace function public.record_article_read(_article_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if _event not in (&#x27;view&#x27;, &#x27;click&#x27;) then return; end if;
-  if not exists (select 1 from public.list_live_ads() x where x.id = _ad_id) then return; end if;
-  insert into public.marketplace_ad_stats (ad_id, day, views, clicks)
-  values (_ad_id, current_date, (_event = &#x27;view&#x27;)::int, (_event = &#x27;click&#x27;)::int)
-  on conflict (ad_id, day) do update set
-    views = public.marketplace_ad_stats.views + (_event = &#x27;view&#x27;)::int,
-    clicks = public.marketplace_ad_stats.clicks + (_event = &#x27;click&#x27;)::int;
+  if not exists (select 1 from public.articles where id = _article_id and is_published and publish_at &lt;= now()) then return; end if;
+  insert into public.article_stats (article_id, day, reads) values (_article_id, current_date, 1)
+  on conflict (article_id, day) do update set reads = public.article_stats.reads + 1;
 end $$;
+grant execute on function public.record_article_read(uuid) to anon, authenticated;
 
-grant execute on function public.list_live_ads() to anon, authenticated;
-grant execute on function public.record_ad_event(uuid, text) to anon, authenticated;
+-- ---------- Starter articles: drafts for the first two weeks ----------
+-- Saved as drafts (not visible to users) so the care team can review and
+-- publish them. Dates are the next Tuesdays and Fridays at 10:00 US Eastern.
+insert into public.articles (slug, title, summary, body, conditions, author_name, is_published, publish_at)
+values
+(&#x27;balanced-plate-4-steps&#x27;, &#x27;Build a balanced plate in 4 steps&#x27;,
+ &#x27;A simple way to put together meals that keep you full and energised, without counting every calorie.&#x27;,
+ E&#x27;You don&#x27;&#x27;t need a complicated diet to eat well. Most healthy meals come together in four parts.\n\n## 1. Fill half the plate with vegetables\nNon-starchy vegetables such as greens, peppers, broccoli, carrots and tomatoes add fiber, vitamins and volume for very few calories. Frozen vegetables count too.\n\n## 2. A quarter: protein\nFish, chicken, eggs, tofu, beans, lentils or Greek yogurt. Protein keeps you full for longer and helps protect muscle, especially when you are losing weight.\n\n## 3. A quarter: whole-grain or starchy carbs\nBrown rice, oats, whole-wheat bread or pasta, quinoa, or potatoes with the skin on give steady energy.\n\n## 4. A little healthy fat\nA drizzle of olive oil, a few slices of avocado, or a small handful of nuts or seeds help your body absorb vitamins.\n\n## Make it easy\n- Drink water with the meal\n- Eat slowly and stop when you are comfortably full\n- Log your plate in the app to see how it fits your day&#x27;,
+ &#x27;{general_wellness,weight_loss,diabetes}&#x27;, &#x27;Care team&#x27;, false, &#x27;2026-11-03 15:00:00+00&#x27;),
+(&#x27;protein-breakfast&#x27;, &#x27;Why a protein breakfast helps all day&#x27;,
+ &#x27;Starting the day with protein can make it easier to manage hunger, energy and focus.&#x27;,
+ E&#x27;Many breakfasts are mostly carbs: cereal, toast or a pastry. They are quick, but energy and fullness often fade by mid-morning.\n\n## What protein does\nProtein takes longer to digest, so it helps you stay full. Pairing it with fiber-rich carbs also leads to a steadier rise in blood sugar than carbs alone.\n\n## How much\nAim for about 20 to 30 grams at breakfast. For example:\n- Two eggs and a slice of whole-grain toast (about 20 g)\n- A cup of Greek yogurt with berries and nuts (about 22 g)\n- A tofu scramble with spinach (about 24 g)\n- Cottage cheese with fruit (about 22 g)\n\n## Short on time?\nPrepare overnight oats with Greek yogurt or soy milk, or boil a batch of eggs on Sunday for the week.\n\nIn the app, the coach on your Home screen tells you how much protein you still need today.&#x27;,
+ &#x27;{focus,weight_loss,diabetes,general_wellness}&#x27;, &#x27;Care team&#x27;, false, &#x27;2026-11-06 15:00:00+00&#x27;),
+(&#x27;where-salt-hides&#x27;, &#x27;Salt: where it hides and how to cut back&#x27;,
+ &#x27;Most of the salt we eat comes from packaged and restaurant food, not the salt shaker.&#x27;,
+ E&#x27;Most adults eat more sodium than recommended. Too much can raise blood pressure, which strains the heart and blood vessels. The general advice is under 2,300 mg a day, about one teaspoon of salt, and lower for many people with high blood pressure.\n\n## Where it hides\nAbout 70% of the sodium we eat comes from packaged and restaurant food. Common sources:\n- Bread and rolls\n- Deli meats, bacon, ham and sausages\n- Pizza, burgers and sandwiches\n- Canned soups and ready meals\n- Savory snacks and sauces such as soy sauce\n\n## Easy swaps\n- Cook with herbs, garlic, citrus, vinegar and spices instead of salt\n- Look for \&quot;low sodium\&quot; on labels: 140 mg or less per serving\n- Rinse canned beans and vegetables\n- Ask for sauces and dressings on the side when eating out\n- Eat more potassium-rich foods such as bananas, potatoes, beans and leafy greens (check with your doctor first if you have kidney disease)\n\nTaste buds adjust: after a few weeks with less salt, food tastes saltier.&#x27;,
+ &#x27;{hypertension,heart_health}&#x27;, &#x27;Care team&#x27;, false, &#x27;2026-11-10 15:00:00+00&#x27;),
+(&#x27;fiber-101&#x27;, &#x27;Fiber 101: the nutrient most of us miss&#x27;,
+ &#x27;Fiber helps with fullness, digestion, blood sugar and cholesterol. Here is how to get more of it.&#x27;,
+ E&#x27;Most people eat about half the fiber they need. Adults generally need around 25 to 34 grams a day.\n\n## Why it matters\n- Helps you feel full, which supports weight management\n- Slows the rise in blood sugar after meals\n- Soluble fiber, found in oats, beans and barley, helps lower LDL cholesterol\n- Supports regular digestion\n\n## Easy ways to add more\n- Swap white bread, rice and pasta for whole-grain versions\n- Add beans or lentils to soups, salads and stews\n- Keep the skin on potatoes and fruit\n- Snack on fruit, vegetables, nuts or seeds\n- Start the day with oats\n\n## Go slowly\nAdd fiber gradually over a couple of weeks and drink plenty of water, to avoid bloating. If you have IBS, some high-fiber foods such as beans, onions and certain fruits can trigger symptoms; oats, kiwi, carrots and chia are often easier. A dietitian can help you find what works for you.&#x27;,
+ &#x27;{diabetes,heart_health,weight_loss,ibs,general_wellness}&#x27;, &#x27;Care team&#x27;, false, &#x27;2026-11-13 15:00:00+00&#x27;)
+on conflict (slug) do nothing;
 
--- ---------- Admin: client list with activity, and a full client view ----------
-drop function if exists public.admin_list_users(text, int, int);
-create or replace function public.admin_list_users(_search text default &#x27;&#x27;, _limit int default 50, _offset int default 0)
-returns table (user_id uuid, email text, display_name text, created_at timestamptz, last_sign_in_at timestamptz,
-               onboarded boolean, roles text[], vendor_status text, conditions text[], last_logged_on date, logged_days_30 int)
-language plpgsql stable security definer set search_path = public, auth as $$
-begin
-  perform public.require_admin();
-  return query
-    select u.id, u.email::text, p.display_name, u.created_at, u.last_sign_in_at, p.onboarded_at is not null,
-           array(select r.role::text from public.user_roles r where r.user_id = u.id order by 1),
-           (select v.status::text from public.marketplace_vendors v where v.owner_user_id = u.id order by v.created_at limit 1),
-           coalesce(p.conditions, &#x27;{}&#x27;),
-           (select max(f.eaten_on) from public.food_entries f where f.user_id = u.id),
-           (select count(distinct f.eaten_on)::int from public.food_entries f where f.user_id = u.id and f.eaten_on &gt; current_date - 30)
-    from auth.users u
-    left join public.profiles p on p.user_id = u.id
-    where coalesce(_search, &#x27;&#x27;) = &#x27;&#x27;
-       or u.email ilike &#x27;%&#x27; || replace(replace(_search, &#x27;%&#x27;, &#x27;\%&#x27;), &#x27;_&#x27;, &#x27;\_&#x27;) || &#x27;%&#x27;
-       or p.display_name ilike &#x27;%&#x27; || replace(replace(_search, &#x27;%&#x27;, &#x27;\%&#x27;), &#x27;_&#x27;, &#x27;\_&#x27;) || &#x27;%&#x27;
-    order by u.created_at desc
-    limit least(greatest(_limit, 1), 200) offset greatest(_offset, 0);
-end $$;
-
-create or replace function public.admin_client_detail(_user_id uuid, _days int default 90)
-returns jsonb language plpgsql security definer set search_path = public, auth as $$
-declare since date := current_date - least(greatest(_days, 1), 365);
-begin
-  perform public.require_admin();
-  if not exists (select 1 from auth.users where id = _user_id) then raise exception &#x27;Client not found&#x27;; end if;
-  insert into public.admin_audit_log (actor_id, action, target_user_id, details)
-  values (auth.uid(), &#x27;view_client&#x27;, _user_id, jsonb_build_object(&#x27;days&#x27;, _days));
-  return jsonb_build_object(
-    &#x27;account&#x27;, (select jsonb_build_object(&#x27;email&#x27;, u.email, &#x27;created_at&#x27;, u.created_at, &#x27;last_sign_in_at&#x27;, u.last_sign_in_at) from auth.users u where u.id = _user_id),
-    &#x27;profile&#x27;, (select to_jsonb(p) from public.profiles p where p.user_id = _user_id),
-    &#x27;food&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;eaten_on&#x27;, f.eaten_on, &#x27;meal&#x27;, f.meal, &#x27;name&#x27;, f.name, &#x27;kcal&#x27;, f.kcal, &#x27;protein_g&#x27;, f.protein_g, &#x27;carbs_g&#x27;, f.carbs_g, &#x27;fat_g&#x27;, f.fat_g) order by f.eaten_on desc, f.created_at desc)
-                      from public.food_entries f where f.user_id = _user_id and f.eaten_on &gt;= since), &#x27;[]&#x27;::jsonb),
-    &#x27;water&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;day&#x27;, w.day, &#x27;glasses&#x27;, w.glasses) order by w.day desc) from public.water_logs w where w.user_id = _user_id and w.day &gt;= since), &#x27;[]&#x27;::jsonb),
-    &#x27;weights&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;measured_on&#x27;, w.measured_on, &#x27;weight_kg&#x27;, w.weight_kg) order by w.measured_on) from public.weight_logs w where w.user_id = _user_id), &#x27;[]&#x27;::jsonb),
-    &#x27;workouts&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;done_on&#x27;, w.done_on, &#x27;session_id&#x27;, w.session_id, &#x27;minutes&#x27;, w.minutes) order by w.done_on desc) from public.workout_logs w where w.user_id = _user_id and w.done_on &gt;= since), &#x27;[]&#x27;::jsonb),
-    &#x27;inquiries&#x27;, coalesce((select jsonb_agg(jsonb_build_object(&#x27;created_at&#x27;, q.created_at, &#x27;listing_id&#x27;, q.listing_id, &#x27;message&#x27;, q.message, &#x27;status&#x27;, q.status) order by q.created_at desc) from public.marketplace_inquiries q where q.user_id = _user_id), &#x27;[]&#x27;::jsonb),
-    &#x27;roles&#x27;, (select coalesce(array_agg(r.role::text), &#x27;{}&#x27;) from public.user_roles r where r.user_id = _user_id)
-  );
-end $$;
-
-revoke execute on function public.admin_list_users(text, int, int) from public, anon;
-revoke execute on function public.admin_client_detail(uuid, int) from public, anon;
-grant execute on function public.admin_list_users(text, int, int) to authenticated;
-grant execute on function public.admin_client_detail(uuid, int) to authenticated;
+-- ---------- This project only: pre-approve Dr. Ben as admin ----------
+insert into public.role_invites (email, role) values (&#x27;bniben60@gmail.com&#x27;, &#x27;admin&#x27;)
+on conflict (email) do update set role = &#x27;admin&#x27;;
+-- If his account already exists and is confirmed, grant now.
+insert into public.user_roles (user_id, role)
+select id, &#x27;admin&#x27; from auth.users where lower(email) = &#x27;bniben60@gmail.com&#x27; and email_confirmed_at is not null
+on conflict do nothing;
 </textarea>
 </main>
 <script>

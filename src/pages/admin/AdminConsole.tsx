@@ -11,14 +11,16 @@ import ClicksChart from "./ClicksChart";
 import AdminOverview from "./AdminOverview";
 import AdminUsers from "./AdminUsers";
 import AdsTab from "./AdsTab";
+import ArticlesTab from "./ArticlesTab";
 import CategoriesTab from "./CategoriesTab";
 import ImageUpload from "@/components/ImageUpload";
 import { EmptyState, ErrorNote, Field, Spinner, SponsoredBadge, StatusBadge, formatPrice, useCategories, useViewer } from "@/components/ui";
 
-type Tab = "overview" | "users" | "queue" | "listings" | "ads" | "vendors" | "brands" | "categories" | "analytics";
+type Tab = "overview" | "users" | "articles" | "queue" | "listings" | "ads" | "vendors" | "brands" | "categories" | "analytics";
 const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
   { id: "overview", label: "Overview", adminOnly: true },
   { id: "users", label: "Clients & roles", adminOnly: true },
+  { id: "articles", label: "Articles" },
   { id: "queue", label: "Review queue" },
   { id: "listings", label: "All listings" },
   { id: "ads", label: "Ads" },
@@ -49,6 +51,7 @@ export default function AdminConsole({ start }: { start?: Tab }) {
       </div>
       {tab === "overview" && <AdminOverview onOpenQueue={() => setTab("queue")} />}
       {tab === "users" && viewer.userId && <AdminUsers myId={viewer.userId} />}
+      {tab === "articles" && <ArticlesTab />}
       {tab === "queue" && <ListingsTab status="pending_review" />}
       {tab === "listings" && <ListingsTab />}
       {tab === "ads" && <AdsTab />}

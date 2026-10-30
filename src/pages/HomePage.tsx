@@ -4,6 +4,7 @@ import { ChevronRight, Clock, Droplet, Lock, Plus, Sparkles, Utensils } from "lu
 import { coachTip, conditionGuide, conditionInsight, isoDay, addDays, loggingStreak, mealIdeas, slotForHour, sumMacros, weekOf, type MealSlot } from "@/lib/nutrition";
 import { AddFoodSheet, CalorieRing, MacroBar, SignInPrompt, WaterGlasses, useFood, useProfile, useTotals, useWater, useWeights, useWorkouts } from "@/components/nutrition";
 import { ConditionIcon, MealIdeaRow } from "@/components/health";
+import { ArticleCard, usePublishedArticles } from "@/components/articles";
 import { weekdayOf, weeklyPlan } from "@/lib/fitness";
 import { KIND_ICON } from "./WorkoutsPage";
 import { Spinner, useViewer } from "@/components/ui";
@@ -19,6 +20,7 @@ export default function HomePage() {
   const water = useWater(today, signedIn);
   const totals = useTotals(addDays(today, -60), today, signedIn);
   const weights = useWeights(signedIn);
+  const reading = usePublishedArticles();
   const workouts = useWorkouts(weekOf(today)[0], weekOf(today)[6], signedIn);
   const [adding, setAdding] = useState<MealSlot | null>(null);
   const toast = useToast();
@@ -127,6 +129,13 @@ export default function HomePage() {
         </span>
         <ChevronRight className="h-5 w-5 text-ink-muted" />
       </Link>
+
+      {(reading.data?.length ?? 0) > 0 && (
+        <section className="grid animate-rise gap-2 [animation-delay:210ms]" aria-label="Learn">
+          <div className="flex items-center justify-between"><h2 className="text-base font-bold">Learn</h2><Link to="/learn" className="text-xs font-semibold text-brand-700">All articles</Link></div>
+          <ArticleCard article={[...reading.data!].sort((a, b) => Number(b.conditions.some((c) => p.conditions.includes(c))) - Number(a.conditions.some((c) => p.conditions.includes(c))) || b.publish_at.localeCompare(a.publish_at))[0]} />
+        </section>
+      )}
 
       {ideas.length > 0 && (
         <section className="card animate-rise p-4 [animation-delay:220ms]" aria-label="Meal ideas">

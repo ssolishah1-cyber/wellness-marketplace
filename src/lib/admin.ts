@@ -64,6 +64,10 @@ export interface AdminApi {
   auditLog(): Promise<AuditEntry[]>;
   /** Full record of one client for the last `days` days. Recorded in the audit log. */
   clientDetail(userId: string, days?: number): Promise<ClientDetail>;
+  /** Grants the role now if the person has a confirmed account, otherwise when they sign up and confirm. */
+  invite(email: string, role: Role): Promise<"granted" | "invited">;
+  listInvites(): Promise<{ email: string; role: Role; created_at: string }[]>;
+  cancelInvite(email: string): Promise<void>;
 }
 
 export const USERS_PAGE = 50;
@@ -87,6 +91,9 @@ function supabaseAdmin(sb: SupabaseClient): AdminApi {
         profile: d.profile && { ...d.profile, start_weight_kg: d.profile.start_weight_kg == null ? null : Number(d.profile.start_weight_kg), goal_weight_kg: d.profile.goal_weight_kg == null ? null : Number(d.profile.goal_weight_kg) },
       };
     },
+    invite: async (email, role) => check<"granted" | "invited">(await sb.rpc("admin_invite", { _email: email, _role: role })),
+    listInvites: async () => check(await sb.from("role_invites").select("email, role, created_at").order("created_at", { ascending: false })),
+    cancelInvite: async (email) => { check(await sb.from("role_invites").delete().eq("email", email)); },
     auditLog: async () => check<AuditEntry[]>(await sb.from("admin_audit_log").select("id, action, target_user_id, details, created_at").order("created_at", { ascending: false }).limit(50)),
   };
 }
@@ -105,6 +112,7 @@ const demoUsers: AdminUser[] = [
   })),
 ];
 const demoAudit: AuditEntry[] = [];
+let demoInvites: { email: string; role: Role; created_at: string }[] = [];
 
 const demoAdmin: AdminApi = {
   async stats() {
@@ -134,6 +142,17 @@ const demoAdmin: AdminApi = {
     demoAudit.unshift({ id: demoAudit.length + 1, action: grant ? "grant_role" : "revoke_role", target_user_id: userId, details: { role }, created_at: new Date().toISOString() });
   },
   async auditLog() { return structuredClone(demoAudit); },
+  async invite(email, role) {
+    if (getDemoPersona() !== "admin") throw new Error("Admins only");
+    const e = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error("Enter a valid email address.");
+    const u = demoUsers.find((x) => x.email === e);
+    if (u) { await this.setRole(u.user_id, role, true); return "granted"; }
+    demoInvites = [{ email: e, role, created_at: new Date().toISOString() }, ...demoInvites.filter((i) => i.email !== e)];
+    return "invited";
+  },
+  async listInvites() { return structuredClone(demoInvites); },
+  async cancelInvite(email) { demoInvites = demoInvites.filter((i) => i.email !== email); },
   async clientDetail(userId, days = 90) {
     if (getDemoPersona() !== "admin") throw new Error("Admins only");
     const u = demoUsers.find((x) => x.user_id === userId);

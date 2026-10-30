@@ -24,6 +24,7 @@ import { useViewer } from "@/components/ui";
 import ConditionPage from "@/pages/ConditionPage";
 import WorkoutsPage from "@/pages/WorkoutsPage";
 import ExerciseLibraryPage from "@/pages/ExerciseLibraryPage";
+import LearnPage, { ArticlePage } from "@/pages/LearnPage";
 
 // The shareable demo build keeps routes in memory (no server rewrites needed)
 // and opens straight on the Market. VITE_BASE lets the app live under a
@@ -73,6 +74,8 @@ export default function App() {
             <Route path="/login" element={<ProfilePage />} />
             <Route path="/workouts" element={<WorkoutsPage />} />
             <Route path="/workouts/library" element={<ExerciseLibraryPage />} />
+            <Route path="/learn" element={<LearnPage />} />
+            <Route path="/learn/:slug" element={<ArticlePage />} />
             <Route path="/health/:id" element={<ConditionPage />} />
             <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />

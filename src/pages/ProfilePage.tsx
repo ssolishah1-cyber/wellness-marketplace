@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Dumbbell, FileText, LogOut, MessageCircle, Shield, SlidersHorizontal, Store, Trash2 } from "lucide-react";
+import { Download, Dumbbell, FileText, KeyRound, LogOut, MessageCircle, Shield, SlidersHorizontal, Store, Trash2 } from "lucide-react";
 import { appUrl } from "@/lib/appUrl";
 import { isNative, reminderEnabled, saveFile, setReminder, tap, type ReminderKind } from "@/lib/native";
 import { fromDisplayWeight, setUnits, toDisplayWeight, useUnits, weightRange, weightUnit } from "@/lib/units";
@@ -125,6 +125,7 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
         <Link to="/privacy" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Privacy Policy</b></Link>
         <Link to="/terms" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Terms of Use</b></Link>
         <Link to="/support" className="flex items-center gap-3 rounded-xl p-2.5 hover:bg-ground"><FileText className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Help &amp; support</b></Link>
+        {!isDemoMode && <ChangePassword />}
         {!isDemoMode && <div className="p-1.5"><SignOut /></div>}
       </section>
 
@@ -299,6 +300,30 @@ function GoalsForm({ profile: p, saving, onSave, onCancel }: { profile: Profile;
         <Field label={`Goal weight (${U})`}><input className="input num" type="number" step="0.1" min={range.min} max={range.max} {...bind("goal_weight_kg")} /></Field>
       </div>
       <div className="flex gap-2"><button className="btn-primary" disabled={saving}>Save goals</button><button type="button" className="btn-outline" onClick={onCancel}>Cancel</button></div>
+    </form>
+  );
+}
+
+function ChangePassword() {
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const change = useMutation({
+    mutationFn: async () => {
+      if (pw !== pw2) throw new Error("The two passwords don't match.");
+      const { error } = await supabase!.auth.updateUser({ password: pw });
+      if (error) throw error;
+    },
+    onSuccess: () => { setOpen(false); setPw(""); setPw2(""); toast("Password changed"); },
+  });
+  if (!open) return <button className="flex items-center gap-3 rounded-xl p-2.5 text-left hover:bg-ground" onClick={() => setOpen(true)}><KeyRound className="h-5 w-5 text-brand-700" /><b className="flex-1 text-sm">Change password</b></button>;
+  return (
+    <form className="grid gap-2 rounded-xl border border-[#d8e2d9] p-3" onSubmit={(e) => { e.preventDefault(); change.mutate(); }}>
+      <Field label="New password" hint="At least 8 characters"><input id="new-password" className="input" type="password" minLength={8} required autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
+      <Field label="Type it again"><input id="new-password-2" className="input" type="password" minLength={8} required autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
+      <ErrorNote error={change.error} />
+      <div className="flex gap-2"><button className="btn-primary" disabled={change.isPending}>Save password</button><button type="button" className="btn-outline" onClick={() => setOpen(false)}>Cancel</button></div>
     </form>
   );
 }

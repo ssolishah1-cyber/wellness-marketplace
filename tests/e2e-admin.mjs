@@ -101,6 +101,33 @@ await p.locator('a[href="/app/market/category/fitness"]').first().click(); await
 await p.screenshot({ path: `${OUT}/m2-category-sponsor.png`, fullPage: true });
 await p.locator('header a[href="/app/admin"]').click(); await p.waitForTimeout(800);
 
+// ---- give access ----
+await p.getByRole("button", { name: "Clients & roles" }).click(); await p.waitForTimeout(700);
+await p.fill("#invite-email", "bniben60@gmail.com"); await p.getByRole("button", { name: "Give access" }).click(); await p.waitForTimeout(600);
+(await p.getByText("(waiting for sign-up)").count()) ? ok("invite waits for sign-up") : fail("invite not listed");
+
+// ---- articles ----
+await p.getByRole("button", { name: "Articles", exact: true }).click(); await p.waitForTimeout(700);
+(await p.getByText("Next 2 weeks: Tuesdays and Fridays").count()) ? ok("article planner shows Tue/Fri slots") : fail("no planner");
+await p.getByRole("button", { name: "New article" }).click(); await p.waitForTimeout(300);
+await p.fill("#art-title", "Hydration basics"); await p.fill("#art-summary", "How much water you need.");
+await p.fill("#art-body", "Water matters.\n\n## How much\n- About 8 glasses\n- More when it's hot");
+const past = new Date(Date.now() - 3600e3); const loc = new Date(past.getTime() - past.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+await p.fill("#art-date", loc);
+await p.getByRole("button", { name: "Preview" }).click(); await p.waitForTimeout(200);
+(await p.getByRole("heading", { name: "How much" }).count()) && (await p.getByText("More when it's hot").count()) ? ok("article preview renders headings and bullets") : fail("preview");
+await p.getByRole("button", { name: "Publish now" }).click(); await p.waitForTimeout(800);
+(await p.getByText("Hydration basics").count()) ? ok("article published") : fail("article not saved");
+await p.screenshot({ path: `${OUT}/a5-admin-articles.png`, fullPage: true });
+await p.locator('nav a[href="/app"]').last().click(); await p.waitForTimeout(1000);
+const learn = p.locator('section[aria-label="Learn"]');
+(await learn.count()) ? ok("Home shows a Learn article") : fail("no Learn card on Home");
+await learn.getByRole("link", { name: "All articles" }).click(); await p.waitForTimeout(800);
+await p.getByRole("link", { name: /Hydration basics/ }).click(); await p.waitForTimeout(800);
+(await p.getByRole("heading", { name: "Hydration basics" }).count()) && (await p.getByText("not medical advice", { exact: false }).count()) ? ok("article page opens with disclaimer") : fail("article page");
+await p.screenshot({ path: `${OUT}/l3-article.png`, fullPage: true });
+await p.locator('header a[href="/app/admin"]').click(); await p.waitForTimeout(800);
+
 await p.getByRole("button", { name: "Review queue" }).click(); await p.waitForTimeout(800);
 (await p.getByText(/Review|pending|No listings/i).count()) ? ok("review queue still works") : fail("queue");
 
