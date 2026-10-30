@@ -14,7 +14,7 @@ import { useToast } from "@/components/Toast";
 import { isDemoMode, supabase } from "@/integrations/supabase/client";
 import { ErrorNote, Field, Spinner, useViewer } from "@/components/ui";
 
-export default function ProfilePage() {
+export default function ProfilePage({ signUp = false }: { signUp?: boolean }) {
   const { data: viewer, isLoading } = useViewer();
   if (isLoading) return <Spinner />;
 
@@ -28,7 +28,7 @@ export default function ProfilePage() {
       </div>
     );
   }
-  return <SignInForm />;
+  return <SignInForm initialMode={signUp ? "up" : "in"} />;
 }
 
 function SignedInProfile({ userId, email, isStaff }: { userId: string; email: string | null; isStaff: boolean }) {
@@ -312,9 +312,9 @@ function SignOut() {
   );
 }
 
-function SignInForm() {
+function SignInForm({ initialMode = "in" }: { initialMode?: "in" | "up" }) {
   const qc = useQueryClient();
-  const [mode, setMode] = useState<"in" | "up" | "forgot">("in");
+  const [mode, setMode] = useState<"in" | "up" | "forgot">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agree, setAgree] = useState(false);

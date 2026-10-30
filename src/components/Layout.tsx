@@ -8,7 +8,7 @@ import { useViewer } from "./ui";
 import { useProfile } from "./nutrition";
 
 // Pages a new user may visit before finishing setup.
-const SETUP_EXEMPT = ["/welcome", "/reset-password", "/privacy", "/terms", "/profile", "/support", "/delete-account"];
+const SETUP_EXEMPT = ["/welcome", "/reset-password", "/privacy", "/terms", "/profile", "/signup", "/login", "/support", "/delete-account"];
 
 const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || "Nutrition App";
 

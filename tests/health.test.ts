@@ -130,13 +130,13 @@ describe("health data in demo mode", () => {
     await expect(n.updateProfile({ conditions: ["ibs"], health_consent_at: null })).rejects.toThrow(/agree/);
     const p = await n.updateProfile({ conditions: ["ibs"], health_consent_at: new Date().toISOString() });
     expect(p.conditions).toEqual(["ibs"]);
-    await n.setWorkoutDone("2026-10-27", "cardio", 30);
-    expect(await n.listWorkouts("2026-10-27", "2026-10-27")).toEqual([{ done_on: "2026-10-27", session_id: "cardio", minutes: 30 }]);
+    await n.setWorkoutDone("2030-01-15", "cardio", 30);
+    expect(await n.listWorkouts("2030-01-15", "2030-01-15")).toEqual([{ done_on: "2030-01-15", session_id: "cardio", minutes: 30 }]);
     setDemoPersona("admin");
-    expect(await n.listWorkouts("2026-10-27", "2026-10-27")).toEqual([]);
+    expect(await n.listWorkouts("2030-01-15", "2030-01-15")).toEqual([]);
     setDemoPersona("vendor");
-    await n.setWorkoutDone("2026-10-27", "cardio", null);
-    expect(await n.listWorkouts("2026-10-27", "2026-10-27")).toEqual([]);
+    await n.setWorkoutDone("2030-01-15", "cardio", null);
+    expect(await n.listWorkouts("2030-01-15", "2030-01-15")).toEqual([]);
   });
 });
 

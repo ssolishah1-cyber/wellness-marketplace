@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { initNative } from "@/lib/native";
 import { supabase } from "@/integrations/supabase/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -20,6 +20,7 @@ import { PrivacyPage, TermsPage } from "@/pages/LegalPage";
 import HelpPage from "@/pages/HelpPage";
 import { ToastProvider } from "@/components/Toast";
 import ProfilePage from "@/pages/ProfilePage";
+import { useViewer } from "@/components/ui";
 import ConditionPage from "@/pages/ConditionPage";
 import WorkoutsPage from "@/pages/WorkoutsPage";
 import ExerciseLibraryPage from "@/pages/ExerciseLibraryPage";
@@ -47,6 +48,13 @@ function NativeBridge() {
   return null;
 }
 
+// Direct sign-up link; people who are already signed in go to Home.
+function SignUpRoute() {
+  const { data: viewer, isLoading } = useViewer();
+  if (isLoading) return null;
+  return viewer?.userId ? <Navigate to="/" replace /> : <ProfilePage signUp />;
+}
+
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } });
 
 export default function App() {
@@ -61,6 +69,8 @@ export default function App() {
             <Route path="/meals" element={<MealsPage />} />
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/signup" element={<SignUpRoute />} />
+            <Route path="/login" element={<ProfilePage />} />
             <Route path="/workouts" element={<WorkoutsPage />} />
             <Route path="/workouts/library" element={<ExerciseLibraryPage />} />
             <Route path="/health/:id" element={<ConditionPage />} />
