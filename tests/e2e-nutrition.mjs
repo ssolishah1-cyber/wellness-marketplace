@@ -68,7 +68,7 @@ await p.fill("#weight", "179"); await p.getByRole("button", { name: "Log weight"
 
 // profile goals
 await nav("/profile");
-await p.getByRole("button", { name: "Edit" }).click();
+await p.locator("section", { has: p.getByRole("heading", { name: "Goals" }) }).getByRole("button", { name: "Edit" }).click();
 await p.fill("#goal-kcal_goal", "1900"); await p.getByRole("button", { name: "Save goals" }).click(); await p.waitForTimeout(700);
 (await p.getByText("1,900 kcal").count()) ? ok("goal saved") : fail("goal not saved");
 await p.screenshot({ path: `${OUT}/n4-profile.png`, fullPage: true });
