@@ -70,7 +70,7 @@ await p.locator('section[aria-label="For you"] a[href="/app/health/diabetes"]').
 await p.screenshot({ path: `${OUT}/l1d-condition.png`, fullPage: true });
 
 // ---- profile: legal links, download, delete ----
-await p.locator('nav a[href="/app/profile"]').last().click(); await p.waitForTimeout(800);
+await p.locator('header a[href="/app/profile"]').last().click(); await p.waitForTimeout(800);
 for (const t of ["Health & preferences", "Privacy Policy", "Terms of Use", "Help & support", "Download my data", "Delete my account", "Recalculate", "lb · ft"]) (await p.getByText(t).count()) ? ok(`profile shows "${t}"`) : fail(`missing "${t}"`);
 const [dl] = await Promise.all([p.waitForEvent("download", { timeout: 5000 }).catch(() => null), p.getByRole("button", { name: "Download my data" }).click()]);
 dl && /my-nutrition-data-\d{4}-\d{2}-\d{2}\.json/.test(dl.suggestedFilename()) ? ok("download produces " + dl.suggestedFilename()) : fail("no download");

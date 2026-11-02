@@ -20,10 +20,13 @@ import { PrivacyPage, TermsPage } from "@/pages/LegalPage";
 import HelpPage from "@/pages/HelpPage";
 import { ToastProvider } from "@/components/Toast";
 import ProfilePage from "@/pages/ProfilePage";
+import PlansPage from "@/pages/PlansPage";
+import { Gate } from "@/components/access";
 import { useViewer } from "@/components/ui";
 import ConditionPage from "@/pages/ConditionPage";
 import WorkoutsPage from "@/pages/WorkoutsPage";
 import ExerciseLibraryPage from "@/pages/ExerciseLibraryPage";
+import QuickWorkoutPage from "@/pages/QuickWorkoutPage";
 import LearnPage, { ArticlePage } from "@/pages/LearnPage";
 
 // The shareable demo build keeps routes in memory (no server rewrites needed)
@@ -67,16 +70,18 @@ export default function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<HomePage />} />
-            <Route path="/meals" element={<MealsPage />} />
-            <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/meals" element={<Gate feature="nutrition"><MealsPage /></Gate>} />
+            <Route path="/progress" element={<Gate feature="nutrition"><ProgressPage /></Gate>} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/plans" element={<PlansPage />} />
             <Route path="/signup" element={<SignUpRoute />} />
             <Route path="/login" element={<ProfilePage />} />
-            <Route path="/workouts" element={<WorkoutsPage />} />
-            <Route path="/workouts/library" element={<ExerciseLibraryPage />} />
-            <Route path="/learn" element={<LearnPage />} />
-            <Route path="/learn/:slug" element={<ArticlePage />} />
-            <Route path="/health/:id" element={<ConditionPage />} />
+            <Route path="/workouts" element={<Gate feature="fitness"><WorkoutsPage /></Gate>} />
+            <Route path="/workouts/library" element={<Gate feature="fitness"><ExerciseLibraryPage /></Gate>} />
+            <Route path="/workouts/quick" element={<Gate feature="fitness"><QuickWorkoutPage /></Gate>} />
+            <Route path="/learn" element={<Gate feature="education"><LearnPage /></Gate>} />
+            <Route path="/learn/:slug" element={<Gate feature="education"><ArticlePage /></Gate>} />
+            <Route path="/health/:id" element={<Gate feature="education"><ConditionPage /></Gate>} />
             <Route path="/welcome" element={<WelcomePage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />

@@ -5,6 +5,9 @@ import { coachTip, conditionGuide, conditionInsight, isoDay, addDays, loggingStr
 import { AddFoodSheet, CalorieRing, MacroBar, SignInPrompt, WaterGlasses, useFood, useProfile, useTotals, useWater, useWeights, useWorkouts } from "@/components/nutrition";
 import { ConditionIcon, MealIdeaRow } from "@/components/health";
 import { ArticleCard, usePublishedArticles } from "@/components/articles";
+import { LockedCard, useAccess } from "@/components/access";
+import { TRIAL_DAYS, planById } from "@/lib/plans";
+import type { Subscription } from "@/lib/access";
 import { weekdayOf, weeklyPlan } from "@/lib/fitness";
 import { KIND_ICON } from "./WorkoutsPage";
 import { Spinner, useViewer } from "@/components/ui";
@@ -21,6 +24,7 @@ export default function HomePage() {
   const totals = useTotals(addDays(today, -60), today, signedIn);
   const weights = useWeights(signedIn);
   const reading = usePublishedArticles();
+  const acc = useAccess();
   const workouts = useWorkouts(weekOf(today)[0], weekOf(today)[6], signedIn);
   const [adding, setAdding] = useState<MealSlot | null>(null);
   const toast = useToast();
@@ -59,6 +63,9 @@ export default function HomePage() {
         <h1 className="text-[26px] font-extrabold">{greeting}{p.display_name ? `, ${p.display_name}` : ""}</h1>
       </div>
 
+      {acc.paywall && <PlanBanner sub={acc.sub} locked={acc.locked} />}
+
+      {acc.can("nutrition") && (<>
       <section className="card grid animate-rise grid-cols-[132px_1fr] items-center gap-4 p-4 [animation-delay:60ms]" aria-label="Today's calories and macros">
         <CalorieRing eaten={m.kcal} goal={p.kcal_goal} />
         <div className="grid gap-2">
@@ -81,7 +88,9 @@ export default function HomePage() {
           {tip.action === "view_meals" ? <><Utensils className="h-4 w-4" /> View meals</> : <><Plus className="h-4 w-4" /> Add {tip.action.replace("add_", "")}</>}
         </button>
       </section>
+      </>)}
 
+      {acc.can("education") && (<>
       <section className="grid animate-rise gap-2 [animation-delay:150ms]" aria-label="For you">
         <div className="flex items-center justify-between"><h2 className="text-base font-bold">For you</h2>
           <Link to="/profile" className="text-xs font-semibold text-brand-700">{p.conditions.length ? "Edit focus" : "Add a health focus"}</Link></div>
@@ -106,7 +115,9 @@ export default function HomePage() {
           </Link>
         )}
       </section>
+      </>)}
 
+      {acc.can("nutrition") && (<>
       <section className="card animate-rise p-4 [animation-delay:180ms]" aria-label="Water">
         <div className="mb-2.5 flex items-center justify-between">
           <div>
@@ -117,7 +128,9 @@ export default function HomePage() {
         </div>
         <WaterGlasses day={today} goal={p.water_goal_glasses} />
       </section>
+      </>)}
 
+      {acc.can("fitness") && (<>
       <Link to="/workouts" className="card flex animate-rise items-center gap-3 p-4 transition hover:border-brand-600 [animation-delay:200ms]" aria-label="Today's workout">
         <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white ${sessionDone ? "bg-brand-600" : "bg-gradient-to-br from-citrus-500 to-rose-600"}`}>
           {SessionIcon ? <SessionIcon className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
@@ -129,15 +142,16 @@ export default function HomePage() {
         </span>
         <ChevronRight className="h-5 w-5 text-ink-muted" />
       </Link>
+      </>)}
 
-      {(reading.data?.length ?? 0) > 0 && (
+      {acc.can("education") && (reading.data?.length ?? 0) > 0 && (
         <section className="grid animate-rise gap-2 [animation-delay:210ms]" aria-label="Learn">
           <div className="flex items-center justify-between"><h2 className="text-base font-bold">Learn</h2><Link to="/learn" className="text-xs font-semibold text-brand-700">All articles</Link></div>
           <ArticleCard article={[...reading.data!].sort((a, b) => Number(b.conditions.some((c) => p.conditions.includes(c))) - Number(a.conditions.some((c) => p.conditions.includes(c))) || b.publish_at.localeCompare(a.publish_at))[0]} />
         </section>
       )}
 
-      {ideas.length > 0 && (
+      {acc.can("nutrition") && ideas.length > 0 && (
         <section className="card animate-rise p-4 [animation-delay:220ms]" aria-label="Meal ideas">
           <h2 className="text-base font-bold">Ideas for {ideaSlot}</h2>
           <p className="text-xs text-ink-muted">{p.conditions.length || p.food_preferences.length ? "Picked for your health focus and food preferences" : "Balanced picks you can log in one tap"}</p>
@@ -145,11 +159,13 @@ export default function HomePage() {
         </section>
       )}
 
+      {acc.can("nutrition") && (<>
       <section className="grid animate-rise grid-cols-3 gap-2 [animation-delay:240ms]">
         <Stat label="Streak" value={String(streak)} unit={streak === 1 ? "day logged" : "days logged"} />
         <Stat label="This week" value={change === null ? "—" : `${change > 0 ? "+" : change < 0 ? "−" : ""}${Math.abs(change)}`} unit={weightUnit(units)} />
         <Link to="/meals" className="card p-3 transition hover:border-brand-600"><span className="text-[11px] text-ink-muted">Meals today</span><b className="num block font-display text-[22px]">{(food.data ?? []).length}</b><span className="text-[11px] text-ink-muted">items logged</span></Link>
       </section>
+      </>)}
 
       {adding && <AddFoodSheet day={today} meal={adding} onClose={() => setAdding(null)} onAdded={(n, k) => toast(`${n} added · ${k} kcal`)} />}
     </div>
@@ -158,4 +174,17 @@ export default function HomePage() {
 
 function Stat({ label, value, unit }: { label: string; value: string; unit: string }) {
   return <div className="card p-3"><span className="text-[11px] text-ink-muted">{label}</span><b className="num block font-display text-[22px]">{value}</b><span className="text-[11px] text-ink-muted">{unit}</span></div>;
+}
+
+function PlanBanner({ sub, locked }: { sub: Subscription | null; locked: boolean }) {
+  if (locked) return <LockedCard compact />;
+  if (sub?.status !== "trialing" || !sub.current_period_end) return null;
+  const left = Math.max(0, Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86400e3));
+  return (
+    <Link to="/plans" className="card flex items-center gap-3 border-citrus-100 bg-citrus-50 p-3 text-sm">
+      <Sparkles className="h-5 w-5 shrink-0 text-citrus-600" />
+      <span className="flex-1"><b>{planById(sub.plan)?.name}</b> free trial: {left} of {TRIAL_DAYS} days left</span>
+      <ChevronRight className="h-4 w-4 text-ink-muted" />
+    </Link>
+  );
 }

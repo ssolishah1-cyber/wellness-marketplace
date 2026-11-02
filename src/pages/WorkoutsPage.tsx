@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronDown, ChevronRight, Clock, Dumbbell, HeartPulse, Info, Library, SlidersHorizontal, Wind } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Clock, Dumbbell, HeartPulse, Info, Library, SlidersHorizontal, Wind } from "lucide-react";
 import { isoDay, nutrition, weekOf, type Profile } from "@/lib/nutrition";
 import { alternativesFor, type DbExercise } from "@/lib/exerciseDb";
 import { ExercisePhoto, ExercisePhotos, ExerciseSheet, useExerciseDb } from "@/components/exercises";
 import { LEVEL_LABEL, PLACE_LABEL, weekdayOf, weeklyPlan, type Session } from "@/lib/fitness";
+import { AREAS, DURATIONS, recommendedAreas, type AreaId } from "@/lib/quickWorkout";
+import type { ConditionId } from "@/lib/nutrition";
 import { SignInPrompt, useProfile, useWorkouts } from "@/components/nutrition";
 import { Spinner, useViewer } from "@/components/ui";
 import { useToast } from "@/components/Toast";
@@ -33,16 +35,18 @@ export default function WorkoutsPage() {
   const day = plan[selected];
 
   return (
-    <div className="mx-auto grid max-w-xl gap-4">
-      <Link to="/" className="flex w-fit items-center gap-1 text-sm font-semibold text-brand-700"><ArrowLeft className="h-4 w-4" /> Home</Link>
+    <div className="mx-auto grid max-w-xl grid-cols-[minmax(0,1fr)] gap-4">
       <div className="flex animate-rise items-end justify-between gap-3">
         <div>
           <p className="text-sm text-ink-muted">{LEVEL_LABEL[p.fitness_level]} · {PLACE_LABEL[p.workout_place]} · {p.workout_days} days a week</p>
-          <h1 className="text-[26px] font-extrabold">Your workouts</h1>
+          <h1 className="text-[26px] font-extrabold">Fitness</h1>
         </div>
         <Link to="/profile" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-700"><SlidersHorizontal className="h-3.5 w-3.5" /> Adjust</Link>
       </div>
 
+      <WorkoutBuilder conditions={p.conditions} />
+
+      <h2 className="-mb-2 text-base font-bold">Your weekly plan</h2>
       <section className="card animate-rise p-3" aria-label="This week">
         <div className="mb-2 flex items-center justify-between px-1 text-xs">
           <b>This week</b><span className="num text-ink-muted">{doneCount} of {planned} done</span>
@@ -75,7 +79,7 @@ export default function WorkoutsPage() {
 
       <Link to="/workouts/library" className="card flex items-center gap-3 p-4 transition hover:border-brand-600">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-700 text-white"><Library className="h-5 w-5" /></span>
-        <span className="flex-1"><b className="block">Exercise library</b><span className="text-xs text-ink-muted">700+ exercises with photos, matched to your level, place and health focus</span></span>
+        <span className="flex-1"><b className="block">Exercise library</b><span className="text-xs text-ink-muted">700+ exercises with photos and step-by-step instructions</span></span>
         <ChevronRight className="h-5 w-5 text-ink-muted" />
       </Link>
 
@@ -157,5 +161,39 @@ function Alternatives({ muscles, excludeId, profile }: { muscles: string[]; excl
       ))}
       {shown && <ExerciseSheet exercise={shown.e} why={shown.why} onClose={() => setShown(null)} />}
     </div>
+  );
+}
+
+function WorkoutBuilder({ conditions }: { conditions: ConditionId[] }) {
+  const navigate = useNavigate();
+  const recommended = recommendedAreas(conditions);
+  const [area, setArea] = useState<AreaId>(recommended[0] ?? "full");
+  const [min, setMin] = useState<number>(20);
+  const areas = [...AREAS].sort((a, b) => Number(recommended.includes(b.id)) - Number(recommended.includes(a.id)));
+  return (
+    <section className="card grid animate-rise gap-3 p-4" aria-label="Build a workout">
+      <div>
+        <h2 className="text-base font-bold">Build a workout</h2>
+        <p className="text-xs text-ink-muted">Pick an area and a time. We'll choose exercises for your level{conditions.length ? " and health focus" : ""}.</p>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {areas.map((a) => (
+          <button key={a.id} type="button" aria-pressed={area === a.id} onClick={() => setArea(a.id)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${area === a.id ? "border-brand-600 bg-brand-600 text-white" : "border-[#d8e2d9] bg-white text-ink-2 hover:border-brand-500"}`}>
+            {a.label}{recommended.includes(a.id) && area !== a.id ? " ★" : ""}
+          </button>
+        ))}
+      </div>
+      {recommended.length > 0 && <p className="-mt-1 text-[11px] text-ink-muted">★ Recommended for your health focus</p>}
+      <div className="flex items-center gap-2">
+        <div className="flex rounded-full bg-[#e8eee7] p-1" role="group" aria-label="Workout length">
+          {DURATIONS.map((d) => (
+            <button key={d} type="button" aria-pressed={min === d} onClick={() => setMin(d)}
+              className={`num rounded-full px-3 py-1.5 text-xs font-semibold transition ${min === d ? "bg-brand-600 text-white" : "text-ink-2"}`}>{d} min</button>
+          ))}
+        </div>
+        <button type="button" className="btn-primary ml-auto" onClick={() => navigate(`/workouts/quick?area=${area}&min=${min}`)}>Start</button>
+      </div>
+    </section>
   );
 }

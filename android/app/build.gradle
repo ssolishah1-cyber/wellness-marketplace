@@ -4,7 +4,7 @@ android {
     namespace = "com.wellnessjumpstart.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.wellnessjumpstart.app"
+        applicationId "com.fitologika.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Cloud builds pass a rising build number; local builds use 1.

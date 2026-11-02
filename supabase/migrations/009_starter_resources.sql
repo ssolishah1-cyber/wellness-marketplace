@@ -12,23 +12,6 @@ select c.id, v.slug, v.title, v.summary, v.description, v.listing_type::public.l
        v.url, 'Open free resource', v.how, 'Independent public resource. Not affiliated with this app; we receive nothing for listing it.',
        false, 'published', now()
 from (values
-  -- Fitness
-  ('fitness', 'free-move-your-way', 'Move Your Way activity planner',
-   'Build a weekly activity plan that fits your schedule, from the U.S. Department of Health.',
-   'An interactive planner based on the Physical Activity Guidelines for Americans: pick activities you enjoy and get a weekly plan for cardio and muscle strengthening.',
-   'program', 'https://odphp.health.gov/moveyourway', E'1. Pick the activities you like.\n2. Choose how many days you can be active.\n3. Get a printable weekly plan.'),
-  ('fitness', 'free-exercise-db', 'Free Exercise DB: 800+ exercises',
-   'Open-source exercise library with photos and step-by-step instructions. The same library powers the app''s workouts.',
-   'A public-domain collection of more than 800 exercises with start and finish photos, muscles worked and instructions. Search by muscle, equipment or level.',
-   'education', 'https://yuhonas.github.io/free-exercise-db/', null),
-  ('fitness', 'free-wger', 'wger: open-source workout tracker',
-   'Free, open-source workout and fitness tracker with an exercise wiki and routines.',
-   'wger is a free, open-source fitness app for building routines, logging workouts and browsing a community exercise wiki. Available on the web, iPhone and Android.',
-   'program', 'https://wger.de/', null),
-  ('fitness', 'free-nia-exercise', 'Exercise and physical activity for older adults',
-   'Safe, simple exercises for strength, balance and flexibility from the National Institute on Aging.',
-   'Guides and videos for endurance, strength, balance and flexibility exercises suited to older adults and beginners.',
-   'education', 'https://www.nia.nih.gov/health/exercise-and-physical-activity', null),
   -- Weight management
   ('weight-management', 'free-body-weight-planner', 'NIH Body Weight Planner',
    'Calculate the calories and activity needed to reach a goal weight by a target date.',

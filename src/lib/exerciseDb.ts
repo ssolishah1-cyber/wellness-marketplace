@@ -3,10 +3,10 @@ import type { ConditionId, FitnessLevel, WorkoutPlace } from "@/lib/nutrition/ty
 // Open-source exercise library: Free Exercise DB (public domain, Unlicense),
 // imported by scripts/fetch-exercises.mjs into public/exercises.json at a
 // pinned commit. Photos load from the same commit. Nothing about the user is
-// ever sent anywhere: matching happens on the device.
+// ever sent anywhere: matching happens on the device. The source isn't shown
+// to users (public domain, no credit required); the app presents it as its own.
 
 export const EXERCISE_DB_COMMIT = "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5";
-export const EXERCISE_DB_CREDIT = { label: "Free Exercise DB (public domain)", url: "https://github.com/yuhonas/free-exercise-db" };
 
 export interface DbExercise {
   id: string;

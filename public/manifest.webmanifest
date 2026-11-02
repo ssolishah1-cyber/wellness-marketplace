@@ -1,7 +1,7 @@
 {
-  "name": "Wellness Jumpstart",
-  "short_name": "Jumpstart",
-  "description": "Track meals, water and progress, and find reviewed wellness partners.",
+  "name": "Fitologika",
+  "short_name": "Fitologika",
+  "description": "Nutrition, workouts and health education tailored to you.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

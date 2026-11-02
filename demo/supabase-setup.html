@@ -24,8 +24,8 @@ textarea { width:100%; box-sizing:border-box; min-height:360px; font-family:var(
 </style>
 <main>
   <div>
-    <h1>Supabase update: articles &amp; access for Ben</h1>
-    <p class="lead">Adds twice-a-week articles (with 4 draft articles to review), giving access by email, and pre-approves bniben60@gmail.com as admin. Safe to run more than once.</p>
+    <h1>Supabase update: subscriptions, Ben&#x27;s access &amp; partner drafts</h1>
+    <p class="lead">Adds plans and the payments switch (starts OFF), free-book requests, admin access for talktodrben@gmail.com, and draft TriggerMD and XIMMD listings. Safe to run more than once.</p>
   </div>
   <section class="panel">
     <div class="actions">
@@ -39,156 +39,162 @@ textarea { width:100%; box-sizing:border-box; min-height:360px; font-family:var(
       <li>Delete anything already in the editor, paste, and click <b>Run</b>. It should finish with “Success. No rows returned”.</li>
     </ol>
   </section>
-  <label for="sql" class="meta">Script · 149 lines · migration 010</label>
+  <label for="sql" class="meta">Script · 155 lines · migration 012</label>
   <textarea id="sql" readonly spellcheck="false">-- =====================================================================
--- Role invites and educational articles. Run after 009.
+-- Subscriptions (Nov 2 review): Starter / Visionary / Max, 1/3/6/12-month
+-- terms, 7-day free trial (the store&#x27;s introductory offer). Run after 011.
 --
--- Invites: an admin pre-approves an email for a role. The role is granted
--- automatically once that person signs up AND confirms their email, so an
--- unconfirmed sign-up with someone else&#x27;s address gets nothing.
---
--- Articles: staff write and schedule short educational articles (Ben&#x27;s
--- plan: two a week). Published articles are public; reads are counted as
--- anonymous daily totals.
+-- Purchases happen in the App Store / Google Play through RevenueCat. Its
+-- webhook (supabase/functions/revenuecat-webhook) writes subscriptions with
+-- the service role; users can only read their own row.
+-- Payments stay switched OFF (app_settings.paywall_enabled = false) until the
+-- store products are approved; while off, everything is unlocked.
 -- =====================================================================
 
--- ---------- Role invites ----------
-create table if not exists public.role_invites (
-  email text primary key check (email = lower(email) and email ~ &#x27;^[^@\s]+@[^@\s]+\.[^@\s]+$&#x27;),
-  role public.app_role not null,
-  invited_by uuid references auth.users(id) on delete set null default auth.uid(),
-  created_at timestamptz not null default now()
-);
-alter table public.role_invites enable row level security;
-drop policy if exists &quot;admins manage invites&quot; on public.role_invites;
-create policy &quot;admins manage invites&quot; on public.role_invites for all to authenticated
-  using (public.has_role(auth.uid(), &#x27;admin&#x27;)) with check (public.has_role(auth.uid(), &#x27;admin&#x27;));
-revoke all on public.role_invites from anon;
-
-create or replace function public.apply_role_invite()
-returns trigger language plpgsql security definer set search_path = public, auth as $$
-declare inv public.role_invites;
-begin
-  if new.email_confirmed_at is null then return new; end if;
-  select * into inv from public.role_invites where email = lower(new.email);
-  if found then
-    insert into public.user_roles (user_id, role) values (new.id, inv.role) on conflict do nothing;
-    insert into public.admin_audit_log (actor_id, action, target_user_id, details)
-    values (inv.invited_by, &#x27;grant_role&#x27;, new.id, jsonb_build_object(&#x27;role&#x27;, inv.role, &#x27;via&#x27;, &#x27;invite&#x27;));
-    delete from public.role_invites where email = inv.email;
-  end if;
-  return new;
-end $$;
-revoke execute on function public.apply_role_invite() from public, anon, authenticated;
-
-drop trigger if exists on_auth_user_confirmed_invite on auth.users;
-create trigger on_auth_user_confirmed_invite
-  after insert or update of email_confirmed_at on auth.users
-  for each row execute function public.apply_role_invite();
-
--- Invites for people who already have a confirmed account apply at once.
-create or replace function public.admin_invite(_email text, _role public.app_role)
-returns text language plpgsql security definer set search_path = public, auth as $$
-declare uid uuid; e text := lower(trim(_email));
-begin
-  perform public.require_admin();
-  select id into uid from auth.users where lower(email) = e and email_confirmed_at is not null;
-  if uid is not null then
-    insert into public.user_roles (user_id, role) values (uid, _role) on conflict do nothing;
-    insert into public.admin_audit_log (actor_id, action, target_user_id, details)
-    values (auth.uid(), &#x27;grant_role&#x27;, uid, jsonb_build_object(&#x27;role&#x27;, _role));
-    return &#x27;granted&#x27;;
-  end if;
-  insert into public.role_invites (email, role) values (e, _role)
-  on conflict (email) do update set role = excluded.role, invited_by = auth.uid(), created_at = now();
-  return &#x27;invited&#x27;;
-end $$;
-revoke execute on function public.admin_invite(text, public.app_role) from public, anon;
-grant execute on function public.admin_invite(text, public.app_role) to authenticated;
-
--- Existing audit actions plus &#x27;grant_role&#x27; via invite need no schema change.
-
--- ---------- Articles ----------
-create table if not exists public.articles (
-  id uuid primary key default gen_random_uuid(),
-  slug text not null unique check (slug ~ &#x27;^[a-z0-9-]{3,80}$&#x27;),
-  title text not null check (char_length(title) between 3 and 120),
-  summary text check (char_length(summary) &lt;= 240),
-  body text not null default &#x27;&#x27; check (char_length(body) &lt;= 20000),
-  cover_image_url text check (cover_image_url is null or cover_image_url ~* &#x27;^https?://&#x27;),
-  conditions text[] not null default &#x27;{}&#x27;,
-  author_name text check (char_length(author_name) &lt;= 80),
-  is_published boolean not null default false,
-  publish_at timestamptz not null default now(),
-  created_by uuid references auth.users(id) on delete set null default auth.uid(),
-  created_at timestamptz not null default now(),
+-- ---------- Settings (admin-editable switches) ----------
+create table if not exists public.app_settings (
+  key text primary key,
+  value jsonb not null,
   updated_at timestamptz not null default now()
 );
-create index if not exists articles_feed on public.articles (is_published, publish_at desc);
-drop trigger if exists trg_articles_updated on public.articles;
-create trigger trg_articles_updated before update on public.articles
-  for each row execute function public.set_updated_at();
+alter table public.app_settings enable row level security;
+drop policy if exists &quot;anyone reads settings&quot; on public.app_settings;
+create policy &quot;anyone reads settings&quot; on public.app_settings for select using (true);
+drop policy if exists &quot;admins change settings&quot; on public.app_settings;
+create policy &quot;admins change settings&quot; on public.app_settings for all to authenticated
+  using (public.has_role(auth.uid(), &#x27;admin&#x27;)) with check (public.has_role(auth.uid(), &#x27;admin&#x27;));
+grant select on public.app_settings to anon, authenticated;
+insert into public.app_settings (key, value) values (&#x27;paywall_enabled&#x27;, &#x27;false&#x27;) on conflict (key) do nothing;
 
-create table if not exists public.article_stats (
-  article_id uuid not null references public.articles(id) on delete cascade,
-  day date not null default current_date,
-  reads int not null default 0,
-  primary key (article_id, day)
+-- ---------- Subscriptions ----------
+create table if not exists public.subscriptions (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  plan text not null check (plan in (&#x27;starter_nutrition&#x27;, &#x27;starter_fitness&#x27;, &#x27;visionary&#x27;, &#x27;max&#x27;)),
+  term_months int not null check (term_months in (1, 3, 6, 12)),
+  status text not null check (status in (&#x27;trialing&#x27;, &#x27;active&#x27;, &#x27;canceled&#x27;, &#x27;past_due&#x27;, &#x27;expired&#x27;)),
+  store text not null check (store in (&#x27;app_store&#x27;, &#x27;play_store&#x27;, &#x27;stripe&#x27;, &#x27;manual&#x27;)),
+  product_id text,
+  current_period_end timestamptz,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
 );
+alter table public.subscriptions enable row level security;
+drop policy if exists &quot;read own subscription&quot; on public.subscriptions;
+create policy &quot;read own subscription&quot; on public.subscriptions for select to authenticated using (user_id = auth.uid());
+revoke all on public.subscriptions from anon;
+revoke insert, update, delete on public.subscriptions from authenticated;
 
-alter table public.articles enable row level security;
-alter table public.article_stats enable row level security;
-drop policy if exists &quot;read published articles&quot; on public.articles;
-create policy &quot;read published articles&quot; on public.articles for select
-  using (is_published and publish_at &lt;= now());
-drop policy if exists &quot;staff manage articles&quot; on public.articles;
-create policy &quot;staff manage articles&quot; on public.articles for all to authenticated
-  using (public.is_marketplace_staff(auth.uid())) with check (public.is_marketplace_staff(auth.uid()));
-drop policy if exists &quot;staff read article stats&quot; on public.article_stats;
-create policy &quot;staff read article stats&quot; on public.article_stats for select to authenticated
-  using (public.is_marketplace_staff(auth.uid()));
-grant select on public.articles to anon, authenticated;
-revoke all on public.article_stats from anon;
+-- ---------- Free book for Max subscribers ----------
+create table if not exists public.book_claims (
+  user_id uuid primary key references auth.users(id) on delete cascade default auth.uid(),
+  full_name text not null check (char_length(full_name) between 2 and 120),
+  address_line1 text not null check (char_length(address_line1) between 3 and 200),
+  address_line2 text check (char_length(address_line2) &lt;= 200),
+  city text not null check (char_length(city) between 1 and 100),
+  region text not null check (char_length(region) between 1 and 100),
+  postal_code text not null check (char_length(postal_code) between 2 and 20),
+  country text not null default &#x27;United States&#x27; check (char_length(country) between 2 and 60),
+  status text not null default &#x27;requested&#x27; check (status in (&#x27;requested&#x27;, &#x27;shipped&#x27;)),
+  created_at timestamptz not null default now(),
+  shipped_at timestamptz
+);
+alter table public.book_claims enable row level security;
+drop policy if exists &quot;max subscribers claim the book&quot; on public.book_claims;
+create policy &quot;max subscribers claim the book&quot; on public.book_claims for insert to authenticated
+  with check (user_id = auth.uid() and exists (
+    select 1 from public.subscriptions s where s.user_id = auth.uid() and s.plan = &#x27;max&#x27;
+      and s.status in (&#x27;active&#x27;, &#x27;canceled&#x27;, &#x27;past_due&#x27;) and s.current_period_end &gt; now()));
+drop policy if exists &quot;read own book claim&quot; on public.book_claims;
+create policy &quot;read own book claim&quot; on public.book_claims for select to authenticated using (user_id = auth.uid());
+drop policy if exists &quot;admins manage book claims&quot; on public.book_claims;
+create policy &quot;admins manage book claims&quot; on public.book_claims for all to authenticated
+  using (public.has_role(auth.uid(), &#x27;admin&#x27;)) with check (public.has_role(auth.uid(), &#x27;admin&#x27;));
+revoke all on public.book_claims from anon;
 
-create or replace function public.record_article_read(_article_id uuid)
+-- ---------- Admin numbers ----------
+-- Paying = active (or canceled / past due but still inside the paid period),
+-- not in a free trial. Commission per paying subscriber per month (agreement
+-- with Soli, Nov 2): Starter $0.50, Visionary $0.75, Max $1.00.
+create or replace function public.admin_subscription_stats()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  perform public.require_admin();
+  return (
+    with live as (
+      select plan, term_months, status from public.subscriptions
+      where status in (&#x27;trialing&#x27;, &#x27;active&#x27;, &#x27;canceled&#x27;, &#x27;past_due&#x27;) and current_period_end &gt; now()
+    ), paying as (select * from live where status &lt;&gt; &#x27;trialing&#x27;)
+    select jsonb_build_object(
+      &#x27;paywall_enabled&#x27;, coalesce((select value from public.app_settings where key = &#x27;paywall_enabled&#x27;), &#x27;false&#x27;::jsonb),
+      &#x27;trialing&#x27;, (select count(*) from live where status = &#x27;trialing&#x27;),
+      &#x27;paying&#x27;, (select count(*) from paying),
+      &#x27;by_plan&#x27;, coalesce((select jsonb_object_agg(plan, n) from (select plan, count(*) n from paying group by plan) x), &#x27;{}&#x27;::jsonb),
+      &#x27;by_term&#x27;, coalesce((select jsonb_object_agg(term_months::text, n) from (select term_months, count(*) n from paying group by term_months) x), &#x27;{}&#x27;::jsonb),
+      &#x27;commission_month_usd&#x27;, (select coalesce(sum(case when plan like &#x27;starter%&#x27; then 0.50 when plan = &#x27;visionary&#x27; then 0.75 else 1.00 end), 0) from paying),
+      &#x27;book_claims_waiting&#x27;, (select count(*) from public.book_claims where status = &#x27;requested&#x27;)
+    )
+  );
+end $$;
+revoke execute on function public.admin_subscription_stats() from public, anon;
+grant execute on function public.admin_subscription_stats() to authenticated;
+
+-- Admins can grant a plan by hand (testers, partners, support cases).
+create or replace function public.admin_set_subscription(_user_id uuid, _plan text, _months int)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if not exists (select 1 from public.articles where id = _article_id and is_published and publish_at &lt;= now()) then return; end if;
-  insert into public.article_stats (article_id, day, reads) values (_article_id, current_date, 1)
-  on conflict (article_id, day) do update set reads = public.article_stats.reads + 1;
+  perform public.require_admin();
+  if _plan is null then
+    delete from public.subscriptions where user_id = _user_id and store = &#x27;manual&#x27;;
+  else
+    insert into public.subscriptions (user_id, plan, term_months, status, store, current_period_end)
+    values (_user_id, _plan, 1, &#x27;active&#x27;, &#x27;manual&#x27;, now() + make_interval(months =&gt; greatest(_months, 1)))
+    on conflict (user_id) do update set plan = excluded.plan, status = &#x27;active&#x27;, store = &#x27;manual&#x27;,
+      current_period_end = excluded.current_period_end, updated_at = now();
+  end if;
+  insert into public.admin_audit_log (actor_id, action, target_user_id, details)
+  values (auth.uid(), &#x27;set_subscription&#x27;, _user_id, jsonb_build_object(&#x27;plan&#x27;, _plan, &#x27;months&#x27;, _months));
 end $$;
-grant execute on function public.record_article_read(uuid) to anon, authenticated;
+revoke execute on function public.admin_set_subscription(uuid, text, int) from public, anon;
+grant execute on function public.admin_set_subscription(uuid, text, int) to authenticated;
 
--- ---------- Starter articles: drafts for the first two weeks ----------
--- Saved as drafts (not visible to users) so the care team can review and
--- publish them. Dates are the next Tuesdays and Fridays at 10:00 US Eastern.
-insert into public.articles (slug, title, summary, body, conditions, author_name, is_published, publish_at)
-values
-(&#x27;balanced-plate-4-steps&#x27;, &#x27;Build a balanced plate in 4 steps&#x27;,
- &#x27;A simple way to put together meals that keep you full and energised, without counting every calorie.&#x27;,
- E&#x27;You don&#x27;&#x27;t need a complicated diet to eat well. Most healthy meals come together in four parts.\n\n## 1. Fill half the plate with vegetables\nNon-starchy vegetables such as greens, peppers, broccoli, carrots and tomatoes add fiber, vitamins and volume for very few calories. Frozen vegetables count too.\n\n## 2. A quarter: protein\nFish, chicken, eggs, tofu, beans, lentils or Greek yogurt. Protein keeps you full for longer and helps protect muscle, especially when you are losing weight.\n\n## 3. A quarter: whole-grain or starchy carbs\nBrown rice, oats, whole-wheat bread or pasta, quinoa, or potatoes with the skin on give steady energy.\n\n## 4. A little healthy fat\nA drizzle of olive oil, a few slices of avocado, or a small handful of nuts or seeds help your body absorb vitamins.\n\n## Make it easy\n- Drink water with the meal\n- Eat slowly and stop when you are comfortably full\n- Log your plate in the app to see how it fits your day&#x27;,
- &#x27;{general_wellness,weight_loss,diabetes}&#x27;, &#x27;Care team&#x27;, false, &#x27;2026-11-03 15:00:00+00&#x27;),
-(&#x27;protein-breakfast&#x27;, &#x27;Why a protein breakfast helps all day&#x27;,
- &#x27;Starting the day with protein can make it easier to manage hunger, energy and focus.&#x27;,
- E&#x27;Many breakfasts are mostly carbs: cereal, toast or a pastry. They are quick, but energy and fullness often fade by mid-morning.\n\n## What protein does\nProtein takes longer to digest, so it helps you stay full. Pairing it with fiber-rich carbs also leads to a steadier rise in blood sugar than carbs alone.\n\n## How much\nAim for about 20 to 30 grams at breakfast. For example:\n- Two eggs and a slice of whole-grain toast (about 20 g)\n- A cup of Greek yogurt with berries and nuts (about 22 g)\n- A tofu scramble with spinach (about 24 g)\n- Cottage cheese with fruit (about 22 g)\n\n## Short on time?\nPrepare overnight oats with Greek yogurt or soy milk, or boil a batch of eggs on Sunday for the week.\n\nIn the app, the coach on your Home screen tells you how much protein you still need today.&#x27;,
- &#x27;{focus,weight_loss,diabetes,general_wellness}&#x27;, &#x27;Care team&#x27;, false, &#x27;2026-11-06 15:00:00+00&#x27;),
-(&#x27;where-salt-hides&#x27;, &#x27;Salt: where it hides and how to cut back&#x27;,
- &#x27;Most of the salt we eat comes from packaged and restaurant food, not the salt shaker.&#x27;,
- E&#x27;Most adults eat more sodium than recommended. Too much can raise blood pressure, which strains the heart and blood vessels. The general advice is under 2,300 mg a day, about one teaspoon of salt, and lower for many people with high blood pressure.\n\n## Where it hides\nAbout 70% of the sodium we eat comes from packaged and restaurant food. Common sources:\n- Bread and rolls\n- Deli meats, bacon, ham and sausages\n- Pizza, burgers and sandwiches\n- Canned soups and ready meals\n- Savory snacks and sauces such as soy sauce\n\n## Easy swaps\n- Cook with herbs, garlic, citrus, vinegar and spices instead of salt\n- Look for \&quot;low sodium\&quot; on labels: 140 mg or less per serving\n- Rinse canned beans and vegetables\n- Ask for sauces and dressings on the side when eating out\n- Eat more potassium-rich foods such as bananas, potatoes, beans and leafy greens (check with your doctor first if you have kidney disease)\n\nTaste buds adjust: after a few weeks with less salt, food tastes saltier.&#x27;,
- &#x27;{hypertension,heart_health}&#x27;, &#x27;Care team&#x27;, false, &#x27;2026-11-10 15:00:00+00&#x27;),
-(&#x27;fiber-101&#x27;, &#x27;Fiber 101: the nutrient most of us miss&#x27;,
- &#x27;Fiber helps with fullness, digestion, blood sugar and cholesterol. Here is how to get more of it.&#x27;,
- E&#x27;Most people eat about half the fiber they need. Adults generally need around 25 to 34 grams a day.\n\n## Why it matters\n- Helps you feel full, which supports weight management\n- Slows the rise in blood sugar after meals\n- Soluble fiber, found in oats, beans and barley, helps lower LDL cholesterol\n- Supports regular digestion\n\n## Easy ways to add more\n- Swap white bread, rice and pasta for whole-grain versions\n- Add beans or lentils to soups, salads and stews\n- Keep the skin on potatoes and fruit\n- Snack on fruit, vegetables, nuts or seeds\n- Start the day with oats\n\n## Go slowly\nAdd fiber gradually over a couple of weeks and drink plenty of water, to avoid bloating. If you have IBS, some high-fiber foods such as beans, onions and certain fruits can trigger symptoms; oats, kiwi, carrots and chia are often easier. A dietitian can help you find what works for you.&#x27;,
- &#x27;{diabetes,heart_health,weight_loss,ibs,general_wellness}&#x27;, &#x27;Care team&#x27;, false, &#x27;2026-11-13 15:00:00+00&#x27;)
+-- ---------- This project only ----------
+-- Dr. Ben&#x27;s main email: admin as soon as that account exists (or now, if it does).
+insert into public.role_invites (email, role) values (&#x27;talktodrben@gmail.com&#x27;, &#x27;admin&#x27;)
+on conflict (email) do update set role = &#x27;admin&#x27;;
+insert into public.user_roles (user_id, role)
+select id, &#x27;admin&#x27; from auth.users where lower(email) = &#x27;talktodrben@gmail.com&#x27; and email_confirmed_at is not null
+on conflict do nothing;
+
+-- Draft partner listings for Ben to complete (not visible until published in Admin).
+insert into public.marketplace_listings
+  (category_id, brand_id, slug, title, summary, description, listing_type, how_it_works, eligibility, min_age,
+   disclaimer, cta_label, is_sponsored, is_regulated, status)
+select c.id, b.id, v.slug, v.title, v.summary, v.description, &#x27;service&#x27;, v.how,
+       &#x27;A licensed clinician decides whether this treatment is right for you.&#x27;, 18,
+       &#x27;Services are provided by independent licensed clinicians through TriggerMD. Prescription treatments require a medical evaluation. Not for emergencies.&#x27;,
+       &#x27;Visit TriggerMD&#x27;, true, true, &#x27;draft&#x27;
+from (values
+  (&#x27;triggermd-weight-loss-glp1&#x27;, &#x27;Medical weight loss (GLP-1) consultation&#x27;,
+   &#x27;Talk to a licensed clinician about medically supervised weight loss, including whether GLP-1 medication is appropriate for you.&#x27;,
+   &#x27;[Fill in: TriggerMD program details, what is included, pricing, states served]&#x27;,
+   E&#x27;1. Complete an online health questionnaire.\n2. A licensed clinician reviews it and meets you by video.\n3. If appropriate, you get a personalised plan and follow-up.&#x27;),
+  (&#x27;triggermd-testosterone&#x27;, &#x27;Testosterone (low T) consultation&#x27;,
+   &#x27;A virtual consultation with a licensed clinician about low testosterone symptoms, testing and treatment options.&#x27;,
+   &#x27;[Fill in: TriggerMD program details, lab testing, pricing, states served]&#x27;,
+   E&#x27;1. Complete an online intake.\n2. Lab testing as ordered by the clinician.\n3. Video visit to review results and options.&#x27;)
+) as v(slug, title, summary, description, how)
+join public.marketplace_categories c on c.slug = &#x27;telehealth&#x27;
+join public.marketplace_brands b on b.slug = &#x27;triggermd&#x27;
 on conflict (slug) do nothing;
 
--- ---------- This project only: pre-approve Dr. Ben as admin ----------
-insert into public.role_invites (email, role) values (&#x27;bniben60@gmail.com&#x27;, &#x27;admin&#x27;)
-on conflict (email) do update set role = &#x27;admin&#x27;;
--- If his account already exists and is confirmed, grant now.
-insert into public.user_roles (user_id, role)
-select id, &#x27;admin&#x27; from auth.users where lower(email) = &#x27;bniben60@gmail.com&#x27; and email_confirmed_at is not null
-on conflict do nothing;
+insert into public.marketplace_listings
+  (category_id, brand_id, slug, title, summary, description, listing_type, disclaimer, cta_label, is_sponsored, is_regulated, status)
+select c.id, b.id, &#x27;ximmd-wellness-products&#x27;, &#x27;XIMMD wellness products&#x27;,
+  &#x27;Wellness products from XIMMD.&#x27;, &#x27;[Fill in: product names, what they are for, ingredients, prices and the link to buy]&#x27;,
+  &#x27;product&#x27;, &#x27;Talk to your doctor before starting any new supplement or wellness product.&#x27;, &#x27;Visit XIMMD&#x27;, true, true, &#x27;draft&#x27;
+from public.marketplace_categories c, public.marketplace_brands b
+where c.slug = &#x27;wellness-products&#x27; and b.slug = &#x27;ximmd&#x27;
+on conflict (slug) do nothing;
 </textarea>
 </main>
 <script>

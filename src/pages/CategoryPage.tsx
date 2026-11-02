@@ -13,7 +13,8 @@ type Sort = "newest" | "price_asc" | "price_desc";
 const IN_APP: Record<string, { to: string; title: string; text: string }[]> = {
   fitness: [
     { to: "/workouts", title: "Your weekly workout plan", text: "Home or gym, matched to your level and health focus" },
-    { to: "/workouts/library", title: "Exercise library", text: "700+ exercises with photos, from the open-source Free Exercise DB" },
+    { to: "/workouts/quick?area=full&min=20", title: "Build a workout", text: "Pick a body area and a time; we choose the exercises" },
+    { to: "/workouts/library", title: "Exercise library", text: "700+ exercises with photos and step-by-step instructions" },
   ],
   "weight-management": [
     { to: "/health/weight_loss", title: "Weight loss guide", text: "What to eat more of, what to limit, daily habits and meal ideas" },
@@ -102,7 +103,7 @@ export default function CategoryPage() {
           {pinned.map(({ ad, listing }) => <FeaturedSlot key={ad.id} ad={ad}><ListingCard listing={listing!} categories={categories} sponsored /></FeaturedSlot>)}
           {rest.map((l) => <ListingCard key={l.id} listing={l} categories={categories} />)}
         </div>
-      ) : <EmptyState title="No listings in this category yet" />}
+      ) : slug && IN_APP[slug] ? null : <EmptyState title="No listings in this category yet" />}
     </div>
   );
 }

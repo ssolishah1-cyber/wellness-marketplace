@@ -2,7 +2,7 @@
 // sites can attribute marketplace traffic. Only listing/brand identifiers are
 // added; nothing about the user is ever put in the URL.
 
-export const UTM_SOURCE = (import.meta.env.VITE_UTM_SOURCE as string | undefined) || "nutrition-app";
+export const UTM_SOURCE = (import.meta.env.VITE_UTM_SOURCE as string | undefined) || "fitologika";
 
 export function withUtm(url: string, campaign: string, content?: string): string {
   let u: URL;

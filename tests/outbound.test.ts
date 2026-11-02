@@ -4,7 +4,7 @@ import { isSafeHttpUrl, withUtm } from "@/lib/outbound";
 describe("withUtm", () => {
   it("adds campaign tags without user data", () => {
     const u = new URL(withUtm("https://triggermd.example/start", "triggermd-consult", "listing"));
-    expect(u.searchParams.get("utm_source")).toBe("nutrition-app");
+    expect(u.searchParams.get("utm_source")).toBe("fitologika");
     expect(u.searchParams.get("utm_medium")).toBe("marketplace");
     expect(u.searchParams.get("utm_campaign")).toBe("triggermd-consult");
     expect(u.searchParams.get("utm_content")).toBe("listing");

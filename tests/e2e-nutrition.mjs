@@ -15,7 +15,8 @@ p.on("console", (m) => m.type() === "error" && !/fonts\.g|net::ERR/.test(m.text(
 const ok = (m) => console.log("✓", m);
 const fail = (m) => { console.log("✗", m); process.exitCode = 1; };
 const PREFIX = new URL(BASE).pathname.replace(/\/$/, "");
-const nav = async (to) => { await p.locator(`nav a[href="${PREFIX + (to === "/" ? "" : to) || "/"}"]`).last().click(); await p.waitForTimeout(700); };
+// Profile lives in the header; the other tabs are in the bottom menu.
+const nav = async (to) => { await p.locator(`${to === "/profile" ? "header" : "nav"} a[href="${PREFIX + (to === "/" ? "" : to) || "/"}"]`).last().click(); await p.waitForTimeout(700); };
 
 await p.goto(`${BASE}/`); await p.waitForTimeout(1200);
 const ring = await p.locator('section[aria-label="Today\'s calories and macros"]').innerText();

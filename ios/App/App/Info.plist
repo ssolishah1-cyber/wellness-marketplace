@@ -12,10 +12,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.wellnessjumpstart.app</string>
+			<string>com.fitologika.app</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.wellnessjumpstart.app</string>
+				<string>com.fitologika.app</string>
 			</array>
 		</dict>
 	</array>
@@ -24,7 +24,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Wellness Jumpstart</string>
+        <string>Fitologika</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

@@ -40,6 +40,8 @@ export function PrivacyPage() {
         <li><b>Marketplace clicks:</b> a daily count of how often each listing is opened. These counts contain no information about who clicked.</li>
       </ul>
 
+      <p><b>Subscriptions:</b> if you buy a plan, Apple or Google process the payment; we receive your plan, renewal dates and status (never your card details) through our payment provider RevenueCat. If you claim the free book with the Max plan, we store the shipping address you give us, only to send the book.</p>
+
       <h2>How we use it</h2>
       <ul>
         <li>To run the app: show your log, progress, goals and coaching tips.</li>
@@ -100,6 +102,16 @@ export function TermsPage() {
         <li>We review listings before they appear but do not guarantee any product, service, price or outcome.</li>
         <li>Purchases, bookings and clinical services happen on the provider's own website and are governed by the provider's terms.</li>
         <li>Telehealth services are provided by licensed third parties; a clinician decides whether you are eligible.</li>
+      </ul>
+
+      <h2>Subscriptions and free trial</h2>
+      <ul>
+        <li>Nutrition, workouts and condition guides are available with a Fitologika plan: Starter (nutrition or fitness), Visionary (both) or Max (both plus condition guides, articles and a free physical book). The Market is free.</li>
+        <li>Plans can be paid monthly or for 3, 6 or 12 months up front at a discount. Prices are shown in the app before you buy.</li>
+        <li>New subscribers get a 7-day free trial. Unless you cancel at least 24 hours before the trial or a billing period ends, the subscription renews automatically and your Apple ID or Google Play account is charged for the next period.</li>
+        <li>Manage or cancel at any time in your App Store or Google Play account settings. Cancelling stops future renewals; you keep access until the end of the period you've paid for.</li>
+        <li>Payments and refunds are handled by Apple or Google under their terms.</li>
+        <li>The free book is for paid Max subscribers (after the trial), one per account, shipped to an address you provide.</li>
       </ul>
 
       <h2>Businesses listing in the Market</h2>

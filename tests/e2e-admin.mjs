@@ -23,11 +23,26 @@ if (await first.count()) {
   (await p.getByText("Swap for a similar exercise").count()) ? ok("plan exercise offers swaps") : fail("no swaps");
 } else ok("rest day today (no session to expand)");
 
+// ---- Fitness tab and workout builder ----
+await p.locator('nav a[href="/app/workouts"]').last().click(); await p.waitForTimeout(900);
+(await p.getByRole("heading", { name: "Fitness", exact: true }).count()) ? ok("Fitness is a main tab") : fail("no Fitness tab");
+await p.locator('section[aria-label="Build a workout"]').getByRole("button", { name: /^Abs & core/ }).click();
+await p.getByRole("button", { name: "10 min" }).click();
+await p.getByRole("button", { name: "Start" }).click(); await p.waitForTimeout(1500);
+(await p.getByRole("heading", { name: "Abs & core workout" }).count()) && (await p.locator("ol > li.card").count()) === 4 ? ok("10-minute abs workout with 4 exercises") : fail("quick workout");
+await p.locator("ol > li.card button").first().click(); await p.waitForTimeout(300);
+(await p.locator("ol > li.card figure").count()) ? ok("quick workout shows photos and steps") : fail("no photos");
+(await p.getByText("Free Exercise DB").count()) === 0 ? ok("no third-party branding shown") : fail("third-party name visible");
+await p.getByRole("button", { name: "Mark as done" }).click(); await p.waitForTimeout(600);
+(await p.getByText("Done, nice work").count()) ? ok("quick workout logged") : fail("not logged");
+await p.screenshot({ path: `${OUT}/x0-quick-workout.png`, fullPage: true });
+await p.getByRole("link", { name: "Fitness", exact: true }).first().click(); await p.waitForTimeout(800);
+
 // ---- exercise library ----
 await p.getByRole("link", { name: /Exercise library/ }).click(); await p.waitForTimeout(1500);
 const count = Number((await p.getByText(/^\d+ exercises$/).innerText()).split(" ")[0]);
 count > 50 ? ok(`library shows ${count} matched exercises`) : fail("library count " + count);
-(await p.getByText("Free Exercise DB (public domain)").count()) ? ok("library credits the open-source source") : fail("no credit");
+(await p.getByText("Free Exercise DB").count()) === 0 ? ok("library shows no third-party branding") : fail("third-party name visible");
 await p.getByRole("button", { name: "Stretch & mobility" }).click(); await p.waitForTimeout(300);
 await p.fill("#ex-search", "hamstring"); await p.waitForTimeout(300);
 const n2 = Number((await p.getByText(/^\d+ exercises$/).innerText()).split(" ")[0]);
@@ -130,6 +145,33 @@ await p.locator('header a[href="/app/admin"]').click(); await p.waitForTimeout(8
 
 await p.getByRole("button", { name: "Review queue" }).click(); await p.waitForTimeout(800);
 (await p.getByText(/Review|pending|No listings/i).count()) ? ok("review queue still works") : fail("queue");
+
+// ---- subscriptions: payments switch, trial user, plans page ----
+p.on("dialog", (d) => d.accept());
+await p.getByRole("button", { name: "Subscriptions", exact: true }).click(); await p.waitForTimeout(700);
+(await p.getByText("Payments are OFF").count()) ? ok("payments start switched off") : fail("payments not off by default");
+await p.getByRole("button", { name: "Switch on" }).click(); await p.waitForTimeout(700);
+(await p.getByText("Payments are ON").count()) ? ok("admin switches payments on") : fail("switch failed");
+for (const t of ["$23.99", "$107.99", "$179.99"]) (await p.getByText(t, { exact: true }).count()) ? ok(`price table shows ${t}`) : fail(`missing ${t}`);
+await p.screenshot({ path: `${OUT}/a6-admin-subscriptions.png`, fullPage: true });
+await p.getByRole("button", { name: "App user" }).click(); await p.waitForTimeout(1000);
+await p.locator('nav a[href="/app"]').last().click(); await p.waitForTimeout(1000);
+(await p.getByText(/Visionary free trial: \d of 7 days left/).count()) ? ok("trial banner on Home") : fail("no trial banner");
+(await p.locator('section[aria-label="For you"]').count()) === 0 ? ok("guides hidden on Visionary (Max only)") : fail("education visible on Visionary");
+(await p.locator('a[aria-label="Today\'s workout"]').count()) ? ok("workouts included in Visionary") : fail("fitness locked on Visionary");
+await p.screenshot({ path: `${OUT}/p1-home-trial.png`, fullPage: true });
+await p.locator('header a[href="/app/profile"]').click(); await p.waitForTimeout(800);
+(await p.getByText(/free trial until/).count()) ? ok("Profile shows plan and trial end") : fail("no plan in Profile");
+await p.getByRole("link", { name: "Change plan" }).click(); await p.waitForTimeout(800);
+(await p.getByRole("heading", { name: "Choose your plan" }).count()) && (await p.getByText("$29.99", { exact: true }).count()) ? ok("plans page shows $29.99 Max") : fail("plans page");
+await p.getByRole("button", { name: /12 months/ }).click(); await p.waitForTimeout(200);
+(await p.getByText("$179.99", { exact: true }).count()) && (await p.getByText(/Physical book shipped free/).count()) ? ok("12-month Max $179.99 with free book") : fail("12-month price");
+(await p.getByText(/renews automatically/).count()) ? ok("auto-renew terms shown") : fail("no renewal terms");
+await p.screenshot({ path: `${OUT}/p2-plans.png`, fullPage: true });
+await p.getByRole("button", { name: "Admin", exact: true }).first().click(); await p.waitForTimeout(800);
+await p.locator('header a[href="/app/admin"]').click(); await p.waitForTimeout(800);
+await p.getByRole("button", { name: "Subscriptions", exact: true }).click(); await p.waitForTimeout(600);
+await p.getByRole("button", { name: "Switch off" }).click(); await p.waitForTimeout(600);
 
 // ---- non-admins don't see admin tabs ----
 await p.getByRole("button", { name: "App user" }).click(); await p.waitForTimeout(800);

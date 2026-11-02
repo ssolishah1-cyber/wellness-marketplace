@@ -1,23 +1,23 @@
 import { useEffect } from "react";
 import { Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Home, Salad, LineChart, ShoppingBag, User, Shield, Store } from "lucide-react";
+import { Dumbbell, Home, Salad, LineChart, ShoppingBag, User, Shield } from "lucide-react";
 import { isDemoMode, supabase } from "@/integrations/supabase/client";
 import { getDemoPersona, onDemoPersonaChange, setDemoPersona, type DemoPersona } from "@/lib/demoApi";
 import { useViewer } from "./ui";
 import { useProfile } from "./nutrition";
 
 // Pages a new user may visit before finishing setup.
-const SETUP_EXEMPT = ["/learn", "/welcome", "/reset-password", "/privacy", "/terms", "/profile", "/signup", "/login", "/support", "/delete-account"];
+const SETUP_EXEMPT = ["/plans", "/learn", "/welcome", "/reset-password", "/privacy", "/terms", "/profile", "/signup", "/login", "/support", "/delete-account"];
 
-const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || "Nutrition App";
+const APP_NAME = (import.meta.env.VITE_APP_NAME as string | undefined) || "Fitologika";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/meals", label: "Meals", icon: Salad },
+  { to: "/workouts", label: "Fitness", icon: Dumbbell },
   { to: "/progress", label: "Progress", icon: LineChart },
   { to: "/market", label: "Market", icon: ShoppingBag },
-  { to: "/profile", label: "Profile", icon: User },
 ];
 
 export default function Layout() {
@@ -53,12 +53,12 @@ export default function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            {viewer?.userId && (
-              <NavLink to="/market/vendor" className="btn-outline px-3 py-1.5 text-xs"><Store className="h-3.5 w-3.5" /> Vendor portal</NavLink>
-            )}
             {viewer?.isStaff && (
               <NavLink to="/admin" className="btn-outline px-3 py-1.5 text-xs"><Shield className="h-3.5 w-3.5" /> {viewer.isAdmin ? "Admin" : "Review console"}</NavLink>
             )}
+            <NavLink to="/profile" aria-label="Profile" className={({ isActive }) => `grid h-9 w-9 place-items-center rounded-full border transition ${isActive ? "border-brand-600 bg-brand-50 text-brand-700" : "border-[#d8e2d9] bg-white text-ink-2 hover:border-brand-500"}`}>
+              <User className="h-4 w-4" />
+            </NavLink>
           </div>
         </div>
       </header>

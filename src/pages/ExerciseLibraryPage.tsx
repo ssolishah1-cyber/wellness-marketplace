@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Search, Sparkles } from "lucide-react";
-import { EXERCISE_DB_CREDIT, MUSCLE_GROUPS, rankExercises, type DbExercise } from "@/lib/exerciseDb";
+import { MUSCLE_GROUPS, rankExercises, type DbExercise } from "@/lib/exerciseDb";
 import { LEVEL_LABEL, PLACE_LABEL } from "@/lib/fitness";
 import { conditionGuide } from "@/lib/nutrition";
 import { ExercisePhoto, ExerciseSheet, cap, useExerciseDb } from "@/components/exercises";
@@ -38,7 +38,7 @@ export default function ExerciseLibraryPage() {
 
   return (
     <div className="mx-auto grid max-w-xl grid-cols-[minmax(0,1fr)] gap-4">
-      <Link to="/workouts" className="flex w-fit items-center gap-1 text-sm font-semibold text-brand-700"><ArrowLeft className="h-4 w-4" /> Workouts</Link>
+      <Link to="/workouts" className="flex w-fit items-center gap-1 text-sm font-semibold text-brand-700"><ArrowLeft className="h-4 w-4" /> Fitness</Link>
       <div className="animate-rise">
         <h1 className="text-[26px] font-extrabold">Exercise library</h1>
         <p className="flex items-start gap-1.5 text-sm text-ink-muted"><Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
@@ -82,7 +82,7 @@ export default function ExerciseLibraryPage() {
           {!results.length && <p className="card p-4 text-sm text-ink-2">No matches. Try another search or muscle group.</p>}
         </>
       )}
-      <p className="text-center text-[11px] text-ink-muted">Exercises and photos: <a className="font-semibold text-brand-700" href={EXERCISE_DB_CREDIT.url} target="_blank" rel="noopener noreferrer">{EXERCISE_DB_CREDIT.label}</a>. General fitness information, not medical advice.</p>
+      <p className="text-center text-[11px] text-ink-muted">General fitness information, not medical advice.</p>
       {shown && <ExerciseSheet exercise={shown.e} why={shown.why} onClose={() => setShown(null)} />}
     </div>
   );

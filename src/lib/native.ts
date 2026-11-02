@@ -11,8 +11,8 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 /** True inside the iPhone / Android app, false in a web browser. */
 export const isNative = Capacitor.isNativePlatform();
 
-/** Custom URL scheme that opens the app, e.g. com.wellnessjumpstart.app://app/reset-password */
-export const APP_SCHEME = (import.meta.env.VITE_APP_ID as string | undefined) || "com.wellnessjumpstart.app";
+/** Custom URL scheme that opens the app, e.g. com.fitologika.app://app/reset-password */
+export const APP_SCHEME = (import.meta.env.VITE_APP_ID as string | undefined) || "com.fitologika.app";
 
 /** A light tap on supported phones; does nothing on the web. */
 export function tap() {

@@ -18,7 +18,7 @@ export const demoCategories: Category[] = [
   ["wellness-products", "Wellness Products", "Eligible supplements and wellness merchandise", "package"],
   ["weight-management", "Weight Management", "Educational programs, coaching and meal-planning", "scale"],
   ["fitness", "Fitness", "Workout memberships, equipment and digital courses", "dumbbell"],
-  ["books-education", "Books & Education", "Nutrition guides, health books and resources", "book-open"],
+  ["books-education", "Condition Education & Recommendations", "Guides, recommendations and books for blood sugar, blood pressure, heart health and more", "book-open"],
   ["providers", "Wellness Providers", "Verified dietitians, nutrition coaches and professionals", "badge-check"],
   ["events", "Events & Programs", "Wellness seminars, online workshops and health events", "calendar"],
 ].map(([slug, name, description, icon], i) => ({

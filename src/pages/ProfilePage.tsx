@@ -10,6 +10,7 @@ import { FOOD_PREF_LABEL, conditionGuide, nutrition, type ConditionId, type Food
 import { ConditionIcon, ConditionPicker, FitnessPicker, FoodPrefPicker, type FitnessValue } from "@/components/health";
 import { LEVEL_LABEL, PLACE_LABEL } from "@/lib/fitness";
 import { useProfile } from "@/components/nutrition";
+import { YourPlan } from "@/components/plan";
 import { useToast } from "@/components/Toast";
 import { isDemoMode, supabase } from "@/integrations/supabase/client";
 import { ErrorNote, Field, Spinner, useViewer } from "@/components/ui";
@@ -76,6 +77,8 @@ function SignedInProfile({ userId, email, isStaff }: { userId: string; email: st
         )}
         <ErrorNote error={save.error} />
       </section>
+
+      <YourPlan />
 
       <HealthSection profile={p} />
 

@@ -1,6 +1,6 @@
 {
-  "appName": "Wellness Jumpstart",
-  "appId": "com.wellnessjumpstart.app",
+  "appName": "Fitologika",
+  "appId": "com.fitologika.app",
   "companyName": "POWERVATE LLC",
   "_note": "appId is PERMANENT once uploaded to the App Store / Google Play. Change it here before the first upload, then run: npm run native:sync"
 }

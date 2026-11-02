@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dumbbell } from "lucide-react";
-import { EXERCISE_DB_CREDIT, loadExerciseDb, photoUrl, type DbExercise } from "@/lib/exerciseDb";
+import { loadExerciseDb, photoUrl, type DbExercise } from "@/lib/exerciseDb";
 import { Sheet } from "./nutrition";
 
 export const useExerciseDb = (enabled = true) =>
@@ -37,7 +37,7 @@ export function ExerciseSheet({ exercise: e, why, onClose }: { exercise: DbExerc
         <p className="text-xs text-ink-muted">{cap(e.level)} · {cap(e.category)} · {cap(e.equipment)} · {e.primaryMuscles.map(cap).join(", ")}</p>
         {why && why.length > 0 && <ul className="grid gap-1 rounded-xl bg-brand-50 p-3 text-xs text-brand-700">{why.map((w) => <li key={w}>{w}</li>)}</ul>}
         <ol className="list-decimal space-y-1.5 pl-5 text-ink-2">{e.instructions.map((s) => <li key={s}>{s}</li>)}</ol>
-        <p className="text-[11px] text-ink-muted">Start light, breathe out on the effort and stop if anything hurts. From <a className="font-semibold text-brand-700" href={EXERCISE_DB_CREDIT.url} target="_blank" rel="noopener noreferrer">{EXERCISE_DB_CREDIT.label}</a>.</p>
+        <p className="text-[11px] text-ink-muted">Start light, breathe out on the effort and stop if anything hurts.</p>
       </div>
     </Sheet>
   );

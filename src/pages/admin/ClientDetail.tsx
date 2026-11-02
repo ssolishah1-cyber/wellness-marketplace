@@ -1,6 +1,9 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Eye } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Download, Eye, Gift } from "lucide-react";
+import { access } from "@/lib/access";
+import { PLANS, type PlanId } from "@/lib/plans";
+import { useToast } from "@/components/Toast";
 import { admin, type ClientDetail as Detail } from "@/lib/admin";
 import { FOOD_PREF_LABEL, MEAL_LABEL, addDays, conditionGuide, isoDay, parseDay } from "@/lib/nutrition";
 import { LEVEL_LABEL, PLACE_LABEL } from "@/lib/fitness";
@@ -84,6 +87,8 @@ export default function ClientDetail({ userId, onBack }: { userId: string; onBac
           <button className="btn-outline px-3 py-1.5 text-xs" onClick={() => download("json")}><Download className="h-3.5 w-3.5" /> Everything (JSON)</button>
         </div>
       </div>
+
+      <GrantPlan userId={userId} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tile k={`Days logged (${DAYS} d)`} v={`${summary.loggedDays}`} sub={`of ${DAYS}`} />
@@ -175,4 +180,28 @@ function Tile({ k, v, sub }: { k: string; v: string; sub: string }) {
 }
 function Row({ k, v }: { k: string; v: string }) {
   return <div className="flex gap-2"><dt className="w-40 shrink-0 text-slate-500">{k}</dt><dd>{v}</dd></div>;
+}
+
+function GrantPlan({ userId }: { userId: string }) {
+  const toast = useToast();
+  const [plan, setPlan] = useState<PlanId | "">("max");
+  const [months, setMonths] = useState(1);
+  const grant = useMutation({
+    mutationFn: () => access.grant(userId, plan || null, months),
+    onSuccess: () => toast(plan ? "Plan given" : "Free plan removed"),
+  });
+  return (
+    <section className="card flex flex-wrap items-center gap-2 p-3 text-sm">
+      <Gift className="h-4 w-4 text-brand-700" /><b>Give a free plan</b>
+      <select className="input w-auto py-1.5" value={plan} onChange={(e) => setPlan(e.target.value as PlanId | "")} aria-label="Plan">
+        {PLANS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        <option value="">Remove free plan</option>
+      </select>
+      {plan && <select className="input w-auto py-1.5" value={months} onChange={(e) => setMonths(Number(e.target.value))} aria-label="Months">
+        {[1, 3, 6, 12].map((m) => <option key={m} value={m}>{m} month{m > 1 ? "s" : ""}</option>)}
+      </select>}
+      <button className="btn-outline px-3 py-1.5 text-xs" disabled={grant.isPending} onClick={() => grant.mutate()}>Save</button>
+      <ErrorNote error={grant.error} />
+    </section>
+  );
 }

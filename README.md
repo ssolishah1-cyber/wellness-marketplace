@@ -1,4 +1,4 @@
-# Nutrition App with Wellness Market
+# Fitologika: nutrition, fitness and wellness market
 
 A nutrition tracker with a reviewed wellness marketplace:
 

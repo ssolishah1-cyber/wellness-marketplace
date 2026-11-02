@@ -49,7 +49,7 @@ workflows:
       groups: [supabase]
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.wellnessjumpstart.app # must match app.config.json
+        bundle_identifier: com.fitologika.app # must match app.config.json
       node: 22
       xcode: latest
       vars:
