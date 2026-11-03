@@ -6,7 +6,7 @@ screen, Android back button, share sheet, and sign-in links that open the app.
 
 ## 1. App name and permanent app ID (done)
 
-`app.config.json`: **Fitologika**, app ID **`com.fitologika.app`**, publisher **POWERVATE LLC**.
+`app.config.json`: **Fitologika**, app ID **`com.fitologika.app`**, publisher **Love Angel Healthcare LLC** (the Apple developer account; must match the seller name).
 The app ID **can never change after the first upload**. To change anything before then, edit the
 file and run `npm run native:sync`.
 
@@ -45,7 +45,7 @@ Plans, prices and product IDs live in `src/lib/plans.ts`. Payments stay **off** 
 them on in Admin → Subscriptions, so the first version can go to review while this is set up.
 
 1. **App Store Connect → Business:** sign the *Paid Applications* agreement and add bank and tax
-   details (POWERVATE LLC). Nothing can be sold until Apple approves this (usually 1–3 days).
+   details (Love Angel Healthcare LLC). Nothing can be sold until Apple approves this (usually 1–3 days).
 2. **App Store Connect → the app → Subscriptions:** create one subscription group "Fitologika"
    and these 16 auto-renewable products (Reference name = product ID):
 
@@ -141,7 +141,7 @@ Needed: iPhone 6.9" (1320 × 2868) and Android phone. Suggested screens: Home (F
 - [ ] Real TriggerMD/XIMMD content and at least a few published listings
 - [ ] Tested on a real iPhone (TestFlight) and Android phone (internal testing)
 - [ ] Supabase migrations 001–008 run (`supabase/setup_all.sql` for a new project)
-- [x] Publisher: **POWERVATE LLC** (`companyName` in `app.config.json`, shown in the Privacy Policy and Terms)
+- [x] Publisher: **Love Angel Healthcare LLC** (`companyName` in `app.config.json`, shown in the Privacy Policy and Terms)
 - [ ] App name trademark check (https://tmsearch.uspto.gov) if renaming, e.g. to Fitologika
 - [ ] Every "Learn more" source link in the condition guides opened once
 - [ ] Google Play: Health apps declaration completed (Policy → App content) and Data safety matches section 6
