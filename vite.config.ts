@@ -46,6 +46,10 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_APP_NAME": JSON.stringify(env.VITE_APP_NAME || appConfig.appName),
       // Legal entity shown in the Privacy Policy and Terms (publisher in the stores).
       "import.meta.env.VITE_COMPANY_NAME": JSON.stringify(env.VITE_COMPANY_NAME || appConfig.companyName),
+      // Support email shown on the legal and help pages, and whether the legal text is final
+      // (hides the "Draft for legal review" banner). Env vars override app.config.json.
+      "import.meta.env.VITE_SUPPORT_EMAIL": JSON.stringify(env.VITE_SUPPORT_EMAIL || appConfig.supportEmail || ""),
+      "import.meta.env.VITE_LEGAL_APPROVED": JSON.stringify(env.VITE_LEGAL_APPROVED || String(appConfig.legalApproved ?? false)),
     },
   };
 });

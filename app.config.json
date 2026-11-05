@@ -2,5 +2,7 @@
   "appName": "Fitologika",
   "appId": "com.fitologika.app",
   "companyName": "Love Angel Healthcare LLC",
-  "_note": "appId is PERMANENT once uploaded to the App Store / Google Play. Change it here before the first upload, then run: npm run native:sync"
+  "_note": "appId is PERMANENT once uploaded to the App Store / Google Play. Change it here before the first upload, then run: npm run native:sync",
+  "supportEmail": "support@fitologika.com",
+  "legalApproved": true
 }
